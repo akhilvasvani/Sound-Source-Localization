@@ -1,6 +1,11 @@
 # Sound-Source-Localization
 Performed Sound Source Localization in a Reverberant Enviornment
 
+# Tricks
+
+[Saving and Loading Python Dictionary with savemat results in error](https://stackoverflow.com/questions/9232751/saving-and-loading-python-dict-with-savemat-results-in-error)
+[Optimal way to Append to Numpy array](https://stackoverflow.com/questions/25649788/optimal-way-to-append-to-numpy-array)
+[Matrix from Python to Matlab](https://stackoverflow.com/questions/1095265/matrix-from-python-to-matlab)
 
 # Thread References
 
