@@ -9,6 +9,8 @@ Performed Sound Source Localization in a Reverberant Enviornment
 
 [Matrix from Python to Matlab](https://stackoverflow.com/questions/1095265/matrix-from-python-to-matlab)
 
+[Python F-strings](https://realpython.com/python-f-strings/)
+
 # Thread References
 
 [Return a value with Threads](https://stackoverflow.com/questions/6893968/how-to-get-the-return-value-from-a-thread-in-python/6894023#6894023)
