@@ -1,7 +1,6 @@
 # Sound-Source-Localization
 Performed Sound Source Localization in a Reverberant Enviornment
 
-# Going to Go Through Code in a second
 
 # Thread References
 
@@ -15,9 +14,9 @@ Performed Sound Source Localization in a Reverberant Enviornment
 
 [Fastest way to find the closest point to a given point in 3D, in Python](https://stackoverflow.com/questions/2641206/fastest-way-to-find-the-closest-point-to-a-given-point-in-3d-in-python?rq=1)
 
-[KD TREE EXAMPLE WITH CUSTOM EUCLIDEAN DISTANCE BALL QUERY]((http://code.activestate.com/recipes/578434-a-simple-kd-tree-example-with-custom-euclidean-dis/))
+[KD TREE EXAMPLE WITH CUSTOM EUCLIDEAN DISTANCE BALL QUERY](http://code.activestate.com/recipes/578434-a-simple-kd-tree-example-with-custom-euclidean-dis/)
 
-[Getting rid of double brackets]((https://www.quora.com/How-can-I-convert-the-list-1-2-3-into-1-2-3-in-Python-Basically-I-want-the-list-to-be-flattened)
+[Getting rid of double brackets](https://www.quora.com/How-can-I-convert-the-list-1-2-3-into-1-2-3-in-Python-Basically-I-want-the-list-to-be-flattened)
 
 [Python/Scipy: KDTree Query Ball Point performance issue](https://stackoverflow.com/questions/43136142/python-scipy-kdtree-query-ball-point-performance-issue)
 
