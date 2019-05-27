@@ -1,6 +1,6 @@
 ## Sound-Source-Localization-in-a-Reverberant Environment
 
-Sound-Source-Localization-in-a-Reverberant Environment was a project I did for my master's degree at Johns Hopkins. In this project, we perform sound source localization in the human heart to detect S1 and S2 sounds. 
+Sound Source Localization in a Reverberant Environment was a project I did for my master's degree at Johns Hopkins. In this project, we perform sound source localization in the human heart to detect S1 and S2 sounds. 
 
 ## Motivation
 
