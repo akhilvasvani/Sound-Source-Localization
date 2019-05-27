@@ -44,9 +44,10 @@ Finally, last of all, all those coordinates are graphed and displayed into a png
 
 # Time to Run
 
+(For S1)
 SRP ~ 1 minute
 
-~TOPS ~ 3 minutes
+TOPS ~ 3 minutes
 
 MUSIC ~ 5 minutes
 
