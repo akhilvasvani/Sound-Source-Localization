@@ -66,6 +66,8 @@ Thread
 
 [JADE in Python](https://github.com/bregmanstudio/cseparate/blob/master/cjade.py)
 
+[Python F-strings](https://realpython.com/python-f-strings/)
+
 # Thread References
 
 [Return a value with Threads](https://stackoverflow.com/questions/6893968/how-to-get-the-return-value-from-a-thread-in-python/6894023#6894023)
