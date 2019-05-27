@@ -54,10 +54,15 @@ MUSIC ~ 5 minutes
 ## Requirements
 
 Python 3.x
+
 pyroomacoustics
+
 SciPy
+
 NumPy
+
 itertools
+
 Thread
 
 
