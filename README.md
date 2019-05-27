@@ -103,3 +103,7 @@ Thread
 ## Credits
 
 Thank you [Pyroomacoustics](https://github.com/LCAV/pyroomacoustics) for the open-source library containing the differnt DOA methods. 
+
+Christos Sapsanis 
+
+Professor Andreas G. Andreou
