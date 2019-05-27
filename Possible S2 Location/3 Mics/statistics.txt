@@ -1,0 +1,5 @@
+3 Microphone Combinations
+
+used for specific mic pair [1,2,3,5,6,7] for quicker estimation
+
+Found 0 S2 locations for any methods.

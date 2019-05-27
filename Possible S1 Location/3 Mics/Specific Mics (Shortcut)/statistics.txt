@@ -1,0 +1,24 @@
+Statistics for Microphones in combinations of 3:
+
+Used shortcut-- used specific microphone pairing (mics2, mic3, mic4 ,mic6, mic7, mic8) for
+SRP, MUSIC, and TOPS
+
+Results for Take 2:
+
+TOPS:
+    duration: ~ 3 minutes
+    Found S1 Location in all Cycles: 21/23
+    Did not find S1 Location: 2/23
+    
+MUSIC:
+    duration: ~ 5 minutes
+    Found S1 Locations in all Cycles: 18/23
+    Did not find S1 Location: 5/23
+
+SRP:
+    duration: ~ 1-2 minutes
+    Found S1 Location in all Cycles: 2/23
+    Did not find S1 Location: 21/23
+    
+
+Take 1 used microphones 1-6. Not useful information. 
