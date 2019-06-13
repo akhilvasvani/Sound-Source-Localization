@@ -1,6 +1,6 @@
 ## Sound-Source-Localization-in-a-Reverberant Environment
 
-Sound-Source-Localization-in-a-Reverberant Environment was a project I did for my master's degree at Johns Hopkins. In this project, we perform sound source localization in the human heart to detect S1 and S2 sounds. 
+Sound Source Localization in a Reverberant Environment was a project I did for my master's degree at Johns Hopkins. In this project, we perform sound source localization in the human heart to detect S1 and S2 sounds. 
 
 ## Motivation
 
@@ -44,9 +44,10 @@ Finally, last of all, all those coordinates are graphed and displayed into a png
 
 # Time to Run
 
+(For S1)
 SRP ~ 1 minute
 
-~TOPS ~ 3 minutes
+TOPS ~ 3 minutes
 
 MUSIC ~ 5 minutes
 
@@ -54,10 +55,15 @@ MUSIC ~ 5 minutes
 ## Requirements
 
 Python 3.x
+
 pyroomacoustics
+
 SciPy
+
 NumPy
+
 itertools
+
 Thread
 
 
@@ -103,3 +109,7 @@ Thread
 ## Credits
 
 Thank you [Pyroomacoustics](https://github.com/LCAV/pyroomacoustics) for the open-source library containing the differnt DOA methods. 
+
+Christos Sapsanis 
+
+Professor Andreas G. Andreou
