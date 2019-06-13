@@ -67,6 +67,12 @@ itertools
 
 Thread
 
+## Results
+
+There are four folders (two types: Recovered and Non-recovered signals). The recovered signals are the original microphone signals preprocessed using the JADE Algorithm to better seperate the sources. Each folder has a different number of trial results for either a 2 pair microphone combination or a 3 pair microphone combination. For each, there is a statistics text file to provide the statistics of each trial. 
+
+Overall, using the non-recovered signals proved easier to find S1 and S2 than using the recover signals did. Though to truly compare the accurary of the DOA methods, there needs to be an echocardiogram of the patient to compare with. For now though, using the approximate locations provided from an echocardiogram textbook and the paper "Imaging of heart acoustic based on the sub-space methods using a microphone array," we found the closest points to these locations for S1 and S2.
+
 ## Heart References
 
 [Diagram of Heart](https://en.wikipedia.org/wiki/Pulmonary_valve#/media/File:Diagram_of_the_human_heart_(cropped).svg)
