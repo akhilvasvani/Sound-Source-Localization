@@ -40,11 +40,12 @@ So, in the first script, ICA, the data, in a .mat file (MATLAB file), is read in
 
 Next, in the main script, we used the distance of arrival (DOA) algorithms to calculate the azimuth and colatitude angles from the center of the microphones. Once all angles are found, we convert them into a cartesian coordiates (x,y,z) and place them in a K-Dimensional Tree structure to find the S1 and S2 sources. Those cartesian coordinates are saved into a csv file. 
 
-Finally, last of all, all those coordinates are graphed and displayed into a png image. 
+Finally, last of all, all those coordinates are graphed, displayed in a png image, and saved as well. 
+
+Note: csvs are saved in the format width, depth, and then length. This is the most accurate depiction of where the S1 and S2 Sounds are
 
 # Time to Run
 
-(For S1)
 SRP ~ 1 minute
 
 TOPS ~ 3 minutes
@@ -66,6 +67,19 @@ itertools
 
 Thread
 
+## Heart References
+
+[Diagram of Heart](https://en.wikipedia.org/wiki/Pulmonary_valve#/media/File:Diagram_of_the_human_heart_(cropped).svg)
+
+[Heart Sounds Review 101](https://www.healio.com/cardiology/learn-the-heart/cardiology-review/topic-reviews/heart-sounds)
+
+[Heart Valve Wikipedia](https://en.wikipedia.org/wiki/Heart_valve)
+
+[Very Strong human heart diagram with body](http://www.stethographics.com/heart/main/sites.htm)
+
+[Another good diagram](https://www.google.com/search?q=heart+sound+locations&client=ubuntu&hs=1Go&channel=fs&tbm=isch&source=iu&ictx=1&fir=s559O9wHQ3RQ1M%253A%252CEj2EttfwJrRmzM%252C_&vet=1&usg=AI4_-kQ8ZFczzM9SsLvrI_Pm2fgmukBxgw&sa=X&ved=2ahUKEwiW27Gy27riAhUSy1kKHfTtCZIQ9QEwD3oECAgQDg#imgrc=v_gPbPh7ZpAvfM:&vet=1)
+
+[Mitral Valve Prolapse](https://www.webmd.com/heart/mitral-valve-prolapse-symptoms-causes-and-treatment#1)
 
 
 # JADE Algorithm Reference
@@ -113,3 +127,10 @@ Thank you [Pyroomacoustics](https://github.com/LCAV/pyroomacoustics) for the ope
 Christos Sapsanis 
 
 Professor Andreas G. Andreou
+
+## Future
+Building a deep neural network to classify the heart sounds to detect potential heart murmurs and classify them accordingly. Below is a paper that builds something similar to what I am attempting to do. The next iteration of my project will focus on this
+
+[Cardiologist-level arrhythmia detection and classification in ambulatory electrocardiograms using a deep neural network](https://stanfordmlgroup.github.io/projects/ecg2/)
+
+[More Data](https://irhythm.github.io/cardiol_test_set/)
