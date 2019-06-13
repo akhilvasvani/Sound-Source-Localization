@@ -1,0 +1,1 @@
+Neither Cycle has points which exist outside the boundaries of the environment. Hence, not usable.

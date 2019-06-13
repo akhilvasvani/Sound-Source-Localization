@@ -5,17 +5,18 @@ Used all microphones for SRP, MUSIC, WAVES, CSSM, and TOPS
 Results:
 
 SRP:
-    Duration: ~21 Minutes
+    Duration: ~22 minutes
     Found S1 Sources: 1
 
 MUSIC:
-    Duration: ~50 Minutes
+    Duration: ~47 minutes
     Found S1 Sources: 1
 
 TOPS:
-    Duration: ~1 hr
+    Duration: ~1 hr + 20 minutes
     Found S1 Sources: 1
 
 WAVES: 
     Duration: ~1 hr + 45 minutes
     Found S1 Sounds: 0
+    

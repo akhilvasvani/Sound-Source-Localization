@@ -1,0 +1,4 @@
+There is one folder in this directory, which contain a trial for 3 combinations of microphones for the recovered S2 sound source. The signal inputted here has already been preprocessed by using the JADE algorithm and the outputs inside this folder contain the results to possibly determine the S1 sound source location. 
+
+I used the same microphone combinations used to find S1 and S2 the latest trials for Possible S1 Location and Possible S2 Location in an effort to optimize. Hence, named this endeavour as "shortcut." Shortcut is fast, though does not get every single possible S2 location as with all microphones! 
+

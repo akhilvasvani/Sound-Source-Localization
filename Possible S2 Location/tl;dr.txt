@@ -1,0 +1,6 @@
+There are two folders in this directory, which contain trials for 2 combinations of microphones and 3 combinations of microphones for S2 sound source. 
+
+2 Microphone combinations (using all the microphones) is a quick search to discover which specific methods--mainly SRP and TOPS--can find the S2 location. It is faster, but not as acurate as with 3 microphone combination. 
+
+3 Microphone combinations using all the possible microphones takes a longer, but provides more possible S2 points. In an effort to optimize, I looked for the specific microphones that will provide the most accurate information to detect S2. While this optimization is fast, there are some points skipped over to find the S2 location.
+
