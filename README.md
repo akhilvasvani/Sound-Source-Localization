@@ -142,3 +142,9 @@ Building a deep neural network to classify the heart sounds to detect potential 
 [More Data](https://irhythm.github.io/cardiol_test_set/)
 
 [Even More Heart Data](https://physionet.org/physiobank/database/#ecg)
+
+[Diagram of where the leads are put](https://www.theonlinelearningcenter.com/Assets/PMDCBT/PIIC_Fundamentals_1.0/shell/viewer/swfs/assets/downloads/12-lead.pdf)
+
+[Types of Leads used in ECG](https://www.cardiosecur.com/magazine/specialist-articles-on-the-heart/lead-systems-how-an-ecg-works)
+
+[How to put the standard 12-leads on](https://www.adinstruments.com/blog/perform-accurate-12-lead-ecg)
