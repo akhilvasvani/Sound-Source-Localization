@@ -4,7 +4,7 @@ Sound Source Localization in a Reverberant Environment was a project I did for m
 
 ## Motivation
 
-The aim of this project is to helps quickly find and detect heart murmurs or other heart-related issues in a short period of time. In order to accurately diagnosis heart murmurs, the S1 and S2 hearts sounds need to known. Once found, one can listen and classify a heart murmur by its signals collected.
+The aim of this project is to help quickly find and detect heart murmurs or other heart-related issues in a short period of time. In order to accurately diagnosis heart murmurs, the S1 and S2 hearts sounds need to known. Once found, one can listen and classify a heart murmur by its signals collected.
 
 
 ## Background
