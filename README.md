@@ -132,7 +132,7 @@ Overall, using the non-recovered signals proved easier to find S1 and S2 than us
 
 Thank you [Pyroomacoustics](https://github.com/LCAV/pyroomacoustics) for the open-source library containing the differnt DOA methods. 
 
-Christos Sapsanis 
+[Christos Sapsanis](https://engineering.jhu.edu/ece/2019/05/03/the-stethovest-aims-to-bring-the-stethoscope-up-to-date-with-modern-medical-imaging-techniques/?fbclid=IwAR25OcGjx24N1lLi9fQaTHODp0uNWiCMcliCYSmgdXiFQs7Ea_h_w50cW2o#.XriE4RNKhZJ)
 
 Professor Andreas G. Andreou
 
@@ -150,3 +150,11 @@ Building a deep neural network to classify the heart sounds to detect potential 
 [Types of Leads used in ECG](https://www.cardiosecur.com/magazine/specialist-articles-on-the-heart/lead-systems-how-an-ecg-works)
 
 [How to put the standard 12-leads on](https://www.adinstruments.com/blog/perform-accurate-12-lead-ecg)
+
+Maybe use some type of clustering ([K-means](https://towardsdatascience.com/k-means-clustering-algorithm-applications-evaluation-methods-and-drawbacks-aa03e644b48a), perhaps?) to cluster the points which are close to one another together. This might be a faster way to converge to a centeroid location.
+
+[Single-speaker-localization with CNNs](https://github.com/Soumitro-Chakrabarty/Single-speaker-localization)
+
+Paper: [Towards End-to-End Acoustic Localization using
+Deep Learning: from Audio Signal to Source Position
+Coordinates](https://arxiv.org/pdf/1807.11094.pdf)
