@@ -1,6 +1,0 @@
-There are two folders in this directory, which contain trials for 2 combinations of microphones and 3 combinations of microphones for S1 sound source. 
-
-2 Microphone combinations (using all the microphones) is a quick search to discover which specific methods--mainly SRP and TOPS--can find the S1 location. It is faster, but not as acurate as with 3 microphone combination. 
-
-3 Microphone combinations using all the possible microphones takes a longer, but provides more possible S1 points. In an effort to optimize, I looked for the specific microphones that will provide the most accurate information to detect S1. Hence, named this endeavour as "shortcut." Shortcut is fast, though does not get every single possible S1 location as with all microphones! 
-
