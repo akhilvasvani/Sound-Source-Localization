@@ -1,21 +1,21 @@
-## Sound-Source-Localization-in-a-Reverberant Environment
+# Sound-Source-Localization-in-a-Reverberant Environment
 
 Sound Source Localization in a Reverberant Environment was a project I did for my master's degree at Johns Hopkins. In this project, we perform sound source localization in the human heart to detect S1 and S2 sounds. 
 
-## Motivation
+# Motivation
 
 The aim of this project is to help quickly find and detect heart murmurs or other heart-related issues in a short period of time. In order to accurately diagnosis heart murmurs, the S1 and S2 hearts sounds need to known. Once found, one can listen and classify a heart murmur by its signals collected.
 
 
-## Background
+# Background
 
-# DOA
+## DOA
 
 Imagine two antennas a distance d apart. The antennas both receive a radio wave from a far away source. Assuming that the front of the radio wave is a flat plane, then the angle between each antenna’s normal and the vector of the radio wave is the Direction of arrival (DOA) (θ). Now, over N snapshots, an algorithm can be implemented to estimate the value of multiple signals DOA angles.
 
 For generally far and wide signals, a difference in wavelength exists when the  same  signal reaches different array elements. This difference leads to a phase difference between the arrival array elements (τ). Using the phase difference between the array elements of the signal one can estimate the signal azimuth as well as the signal co-latitude, which is the basic principle of DOA estimation.
 
-# Methods
+## Methods
 
 Multiple signal classification (MUSIC) is versatile because it provides asymptotically unbiased estimates of signal parameters that approach the Cramer-Rao accuracy bound. Instead of maximizing the probability---assuming that the data is normally distributed (Gaussian), MUSIC models the data as the sum of point source emissions and noise. Geometrically speaking, MUSIC minimizes the angle θ between the signal subspace and the microphone. Unlike the maximum likelihood method, which would minimize some type of weighted combination for all component distances.
 
@@ -26,7 +26,7 @@ Test of orthogonality of projected subspaces, (TOPS), is another direction-of-ar
 
 CSSM constructs a single signal subspace for high-resolution estimation of the angles of arrival of multiple wide-band plane waves. "The technique relies on an approximately coherent combination of the spatial signal spaces of the temporally narrow-band decomposition of the received signal vector from an array of sensors". Unlike CSSM, a new approach to wideband direction finding, called the weighted average of signal subspaces (WAVES), combines a robust near-optimal data-adaptive statistic and focuses matrices to ensure a statistically robust preprocessing of wideband data.
 
-# Angles
+## Angles
 
 We use the physics approach to thinking of ths spherical coordinate system:
 
@@ -34,7 +34,7 @@ We use the physics approach to thinking of ths spherical coordinate system:
 	polar (colatitude) angle θ (theta)--between z axis and r 
 	azimuthal angle φ (phi)--between x and y axis
 
-## How to Use
+# How to Use
 
 So, in the first script, ICA, the data, in a .mat file (MATLAB file), is read in and split up into 24 cycles each labeled in a Folder S1 and S2. 
 
@@ -53,7 +53,7 @@ TOPS ~ 3 minutes
 MUSIC ~ 5 minutes
 
 
-## Requirements
+# Requirements
 
 Python 3.x
 
@@ -67,11 +67,13 @@ itertools
 
 Thread
 
-## Results
+# Results
 
 There are four folders (two types: Recovered and Non-recovered signals). The recovered signals are the original microphone signals preprocessed using the JADE Algorithm to better seperate the sources. Each folder has a different number of trial results for either a 2 pair microphone combination or a 3 pair microphone combination. For each, there is a statistics text file to provide the statistics of each trial. 
 
 Overall, using the non-recovered signals proved easier to find S1 and S2 than using the recover signals did. Though to truly compare the accurary of the DOA methods, there needs to be an echocardiogram of the patient to compare with. For now though, using the approximate locations provided from an echocardiogram textbook and the paper "Imaging of heart acoustic based on the sub-space methods using a microphone array," we found the closest points to these locations for S1 and S2.
+
+# References
 
 ## Heart References
 
@@ -88,13 +90,13 @@ Overall, using the non-recovered signals proved easier to find S1 and S2 than us
 [Mitral Valve Prolapse](https://www.webmd.com/heart/mitral-valve-prolapse-symptoms-causes-and-treatment#1)
 
 
-# JADE Algorithm Reference
+## JADE Algorithm Reference
 
 [JADE in Python](https://github.com/bregmanstudio/cseparate/blob/master/cjade.py)
 
 [Python F-strings](https://realpython.com/python-f-strings/)
 
-# Thread References
+## Thread References
 
 [Return a value with Threads](https://stackoverflow.com/questions/6893968/how-to-get-the-return-value-from-a-thread-in-python/6894023#6894023)
 
@@ -102,7 +104,7 @@ Overall, using the non-recovered signals proved easier to find S1 and S2 than us
 
 [MutliThreading in General](https://www.geeksforgeeks.org/multithreading-python-set-1/)
 
-# KD Tree References
+## KD Tree References
 
 [Fastest way to find the closest point to a given point in 3D, in Python](https://stackoverflow.com/questions/2641206/fastest-way-to-find-the-closest-point-to-a-given-point-in-3d-in-python?rq=1)
 
@@ -116,7 +118,7 @@ Overall, using the non-recovered signals proved easier to find S1 and S2 than us
 
 [scipy.spatial.KDTree](https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.spatial.KDTree.html#scipy.spatial.KDTree) 
 
-# Tricks
+## Tricks
 
 [Saving and Loading Python Dictionary with savemat results in error](https://stackoverflow.com/questions/9232751/saving-and-loading-python-dict-with-savemat-results-in-error)
 
@@ -126,15 +128,15 @@ Overall, using the non-recovered signals proved easier to find S1 and S2 than us
 
 [Create a Folder in Python](https://gist.github.com/keithweaver/562d3caa8650eefe7f84fa074e9ca949)
 
-## Credits
+# Credits
 
 Thank you [Pyroomacoustics](https://github.com/LCAV/pyroomacoustics) for the open-source library containing the differnt DOA methods. 
 
-Christos Sapsanis 
+[Christos Sapsanis](https://engineering.jhu.edu/ece/2019/05/03/the-stethovest-aims-to-bring-the-stethoscope-up-to-date-with-modern-medical-imaging-techniques/?fbclid=IwAR25OcGjx24N1lLi9fQaTHODp0uNWiCMcliCYSmgdXiFQs7Ea_h_w50cW2o#.XriE4RNKhZJ)
 
 Professor Andreas G. Andreou
 
-## Future
+# Future
 Building a deep neural network to classify the heart sounds to detect potential heart murmurs and classify them accordingly. Below is a paper that builds something similar to what I am attempting to do. The next iteration of my project will focus on this
 
 [Cardiologist-level arrhythmia detection and classification in ambulatory electrocardiograms using a deep neural network](https://stanfordmlgroup.github.io/projects/ecg2/)
@@ -148,3 +150,11 @@ Building a deep neural network to classify the heart sounds to detect potential 
 [Types of Leads used in ECG](https://www.cardiosecur.com/magazine/specialist-articles-on-the-heart/lead-systems-how-an-ecg-works)
 
 [How to put the standard 12-leads on](https://www.adinstruments.com/blog/perform-accurate-12-lead-ecg)
+
+Maybe use some type of clustering ([K-means](https://towardsdatascience.com/k-means-clustering-algorithm-applications-evaluation-methods-and-drawbacks-aa03e644b48a), perhaps?) to cluster the points which are close to one another together. This might be a faster way to converge to a centeroid location.
+
+[Single-speaker-localization with CNNs](https://github.com/Soumitro-Chakrabarty/Single-speaker-localization)
+
+Paper: [Towards End-to-End Acoustic Localization using
+Deep Learning: from Audio Signal to Source Position
+Coordinates](https://arxiv.org/pdf/1807.11094.pdf)
