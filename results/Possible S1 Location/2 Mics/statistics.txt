@@ -1,0 +1,28 @@
+Statistics for Microphones in combinations of 2:
+
+Ran only 10 trials
+
+Results:
+
+SRP:
+    duration: ~ 12 minutes
+    Found S1 Location in all Cycles: 4/10
+    Did not find S1 Location: 6/10
+
+MUSIC:
+    duration: ~ 23 minutes
+    Found S1 Locations in all Cycles: 2/10
+    Did not find S1 Location: 8/10
+
+TOPS:
+    duration: ~ 30 minutes
+    Found S1 Location in all Cycles: 5/10
+    Did not find S1 Location: 5/10
+    
+WAVES:
+    duration: ~1 hr minutes
+    Found S1 Locations: None
+
+CSSM:
+    duration: ~1 hr + 20 minutes
+    Found S1 Locations: None

@@ -1,0 +1,41 @@
+Statistics for Microphones in combinations of 3:
+
+Take 2: Used specific microphones--mic1, mic2, mic3, mic5, mic6, mic7-- for quicker estimation. Found 0 S2 locations for any methods.
+
+Take 3:
+
+Results for Take 3: Used specific microphones -- mic2, mic3, mic6, mic7, mic10, mic11
+
+SRP:
+    Duration: ~1-2 minutes
+    Found S2 Sources in all Cycles: 3/11
+    Not Found: 8/11
+
+MUSIC:
+    Duration: 5 minutes
+    Found S2 Sources in all Cycles: 5/10
+    Not Found: 5/10
+
+TOPS:
+    Duration: 3 minutes
+    Found S2 Sources: 2/10
+    Not Found: 8/24
+
+Take 4: Used specific microphones--mic1, mic2, mic5, mic6, mic9, mic10 -- for quicker and accurate estimation
+
+Results for Take 4:
+
+SRP:
+    Duration: ~1-2 minutes
+    Found S2 Sources in all Cycles: 10/24
+    Not Found: 14/10
+
+MUSIC:
+    Duration: 5 minutes
+    Found S2 Sources in all Cycles: 16/24
+    Not Found: 8/24
+
+TOPS:
+    Duration: 3 minutes
+    Found S2 Sources: 9/24
+    Not Found: 15/24
