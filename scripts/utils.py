@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-
 """This script contains utility functions that are helpful
 for the sound source localization script."""
 
 import threading
+
+from scripts.validations import ValidateList
 
 
 class ThreadWithReturnValue(threading.Thread):
@@ -30,6 +31,7 @@ class ThreadWithReturnValue(threading.Thread):
         return self._return
 
 
+@ValidateList
 def convert_to_one_list(sample_list):
     """Converts a list of a list into a single list.
 
@@ -38,13 +40,7 @@ def convert_to_one_list(sample_list):
 
     Returns:
         output_list: a single list
-
-    Raises:
-        ValueError: if the input list is empty
     """
-
-    if not sample_list:
-        raise ValueError('Error. sample_list is empty!')
 
     output_list = []
     for item in sample_list:
@@ -59,10 +55,8 @@ def convert_to_one_list(sample_list):
     return output_list
 
 
+@ValidateList
 def check_list_of_lists_are_same_length(sample_list):
-    if not sample_list:
-        raise ValueError('Error. Sample list is empty')
-
     it = iter(sample_list)
     the_len = len(next(it))
     return False if not all(len(small_list) == the_len for small_list in it) else True

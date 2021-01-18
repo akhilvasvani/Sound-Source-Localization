@@ -1,7 +1,7 @@
-from scripts.sound_source_localization import SoundSourceLocation
-
 import unittest
 import numpy as np
+
+from scripts.sound_source_localization import SoundSourceLocation
 
 
 class GetCentroidTestCase(unittest.TestCase):

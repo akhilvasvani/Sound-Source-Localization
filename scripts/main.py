@@ -1,15 +1,14 @@
 # !/usr/bin/env python
-
-"""This is the main file."""
+"""This is the main driver file."""
 
 
 from scripts.sound_source_localization import SoundSourceLocation
 from scripts.determine_source import TrueSourceLocation
 
 
-def read_csv(filename):
-    import numpy as np
-    return np.genfromtxt(filename, delimiter=',')
+# def read_csv(filename):
+#     import numpy as np
+#     return np.genfromtxt(filename, delimiter=',')
 
 
 def main():
@@ -21,8 +20,8 @@ def main():
 
     src1 = SoundSourceLocation(head, method_name)
     sound_cycle, source_estimates = src1.run()
-    ts1 = TrueSourceLocation(method_name, sound_cycle, source_estimates)
-    print(ts1.room_filter_out())
+    # ts1 = TrueSourceLocation(method_name, sound_cycle, source_estimates)
+    # print(ts1.room_filter_out())
 
     # DEBUG:
     # sound_cycle = 'S1_Cycle0'
