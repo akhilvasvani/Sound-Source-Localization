@@ -7,11 +7,10 @@ import pyroomacoustics as pra
 
 from itertools import combinations
 
-from scripts.utils import ThreadWithReturnValue, convert_to_one_list, \
-    check_list_of_lists_are_same_length
-
-from scripts.validations import validate_difference_of_arrivals
-
+from scripts.utils import ThreadWithReturnValue
+from scripts.utils import MultiProcessingWithReturnValue
+from scripts.validations import validate_difference_of_arrivals, \
+    ValidateCentroid, validate_get_mic_with_sound_data
 from scripts.preprocess import PrepareData
 
 
@@ -72,8 +71,8 @@ class SoundSourceLocation(object):
         self.transform = transform
 
     @staticmethod
+    @ValidateCentroid
     def get_centroid(*args):
-        # TODO: Add a wrapper here to clean up
         """Returns the center of n number of microphones (centroid).
 
             Args:
@@ -81,27 +80,7 @@ class SoundSourceLocation(object):
 
             Returns:
                 (numpy array) the center of the microphones
-
-            Raises:
-                ValueError: Microphone location list is empty
-                ValueError: Microphone location list contains None
-                ValueError: Not all the microphones in list are the
-                            same length
-                TypeError: A microphone is not a float
         """
-        if not convert_to_one_list(*args):
-            raise ValueError('Error. Microphone location list is empty.')
-
-        if None in convert_to_one_list(*args):
-            raise ValueError('Error. Microphone location list contains None.')
-
-        if not check_list_of_lists_are_same_length(*args):
-            raise ValueError('Error. Not all microphone locations have same length!')
-
-        if not all([isinstance(mic_loc, float) for mic_loc in convert_to_one_list(*args)]):
-            raise TypeError('Error. Microphone location list '
-                            'does not contain a float type.')
-
         microphone_array = np.array(*args)
         return np.sum(microphone_array, axis=0) / len(*args)
 
@@ -115,6 +94,7 @@ class SoundSourceLocation(object):
         return np.array([self.x_dim_max, self.y_dim_max, self.z_dim_max])
 
     @staticmethod
+    @validate_get_mic_with_sound_data
     def get_mic_match_with_sound_data(mic_sound_data_and_loc_dict, *args):
         """Using the dictionary--with microphones as keys, and its
            corresponding sound data and location, get the data of
@@ -131,12 +111,6 @@ class SoundSourceLocation(object):
         """
 
         signal_list, mic_location = [], []
-
-        if not args:
-            raise ValueError('Error. Microphone list is empty.')
-
-        # if not convert_to_one_list(args):
-        #     raise ValueError('Error. Microphone list is empty.')
 
         # Look for the microphone location and the microphone signal
         # in the list in the dictionary
@@ -262,8 +236,10 @@ class SoundSourceLocation(object):
             return self.split_and_conquer(centroid, cartesian_coordinates)
         return self.radius * cartesian_coordinates.T + np.array(centroid)[np.newaxis, :]
 
-    def process_potential_estimates(self, all_sound_data):
-        # TODO: Figure out for the None-default cases
+    def process_potential_estimates(self, all_sound_data, number_of_splits=5):
+        # TODO:
+        #  1) Figure out splits number
+        #  2) Figure out for the Non-default cases
         """Returns all the estimates for all the microphone combinations
            and re-centers according to the room dimension specifications.
            Microphone combinations are split up into equal chunks and
@@ -271,6 +247,7 @@ class SoundSourceLocation(object):
 
            Args:
                all_sound_data: (numpy array) the entire microphone signal data
+               number_of_splits: (integer) the number of splits for mulithreading?
 
             Returns:
                 numpy array of the potential estimates re-centered according
@@ -294,50 +271,35 @@ class SoundSourceLocation(object):
 
         mic_list = list(combinations(mics, self.combinations_number))
 
-        splits = len(mic_list) // 5
+        splits = len(mic_list) // number_of_splits
 
         # Split up the mic list into chunks of the same size
         mic_split_list = [mic_list[i * splits:(i+1) * splits]
                           for i in range((len(mic_list)+splits-1) // splits)]
 
-        outputs_list = []
 
+        threads = []
         # TODO: Test if Multithread is actually faster??
         # Go through all the chunks in the multi-thread
+        # start = time.time()
         for j in range(splits):
-            thread1 = ThreadWithReturnValue(target=self.get_estimates,
-                                            args=(all_sound_data,
-                                                  *mic_split_list[0][j]))
-            thread2 = ThreadWithReturnValue(target=self.get_estimates,
-                                            args=(all_sound_data,
-                                                  *mic_split_list[1][j]))
-            thread3 = ThreadWithReturnValue(target=self.get_estimates,
-                                            args=(all_sound_data,
-                                                  *mic_split_list[2][j]))
-            thread4 = ThreadWithReturnValue(target=self.get_estimates,
-                                            args=(all_sound_data,
-                                                  *mic_split_list[3][j]))
-            thread5 = ThreadWithReturnValue(target=self.get_estimates,
-                                            args=(all_sound_data,
-                                                  *mic_split_list[4][j]))
+            for i in range(number_of_splits):
+                thread = ThreadWithReturnValue(target=self.get_estimates,
+                                               args=(all_sound_data,
+                                                     *mic_split_list[i][j]))
+                threads.append(thread)
+                thread.start()
 
-            # Start the multi-thread
-            thread1.start()
-            thread2.start()
-            thread3.start()
-            thread4.start()
-            thread5.start()
+        all_estimates = np.array([thread.join() for thread in threads])
+        # end = time.time()
+        # print("Took: ", end - start)  # 107 seconds
 
-            estimate_1 = thread1.join()
-            estimate_2 = thread2.join()
-            estimate_3 = thread3.join()
-            estimate_4 = thread4.join()
-            estimate_5 = thread5.join()
-
-            outputs_list.extend((estimate_1, estimate_2, estimate_3,
-                                 estimate_4, estimate_5))
-
-        all_estimates = np.array(outputs_list)
+        # start = time.time()
+        # test_total_input = ((all_sound_data,
+        #                      mic_split_list[i][j]) for j in range(splits) for i in range(number_of_splits))
+        # all_estimates = np.array(MultiProcessingWithReturnValue(self.get_estimates, *test_total_input).pooled())
+        # end = time.time()
+        # print("Took: ", end - start) # 6 s.
 
         # Reshape them to (_, 3) which is proper format
         potential_sources = np.reshape(all_estimates,
@@ -356,7 +318,7 @@ class SoundSourceLocation(object):
         # TODO: Figure out for the default
         """Runs all the functions."""
 
-        head = '/home/akhil/Sound-Source-Localization/data/raw/'
+        head = '/home/akhil/Sound-Source-Localization/data/heart sound/raw/'
         src1 = PrepareData(head).load_file()
         # for mic_info, self.s1_bool in src1:
         #     yield self.process_potential_estimates(mic_info)
@@ -365,6 +327,5 @@ class SoundSourceLocation(object):
 
 
 method_name = 'SRP'
-a = SoundSourceLocation(method_name).run()
-print(a)
-
+b = SoundSourceLocation(method_name).run()
+print(b)

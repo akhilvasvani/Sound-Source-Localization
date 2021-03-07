@@ -24,6 +24,29 @@ class InitTestCase(PrepareDataTestCase):
         with self.assertRaises(TypeError):
             self.test_read_mat_file(test_case)
 
+
+### MIGHT BE USEFUL?
+# class GetSoundDataTestCase(SoundSourceLocationTestCase):
+#     """
+#     Test to gather sound data
+#     """
+#
+#     def test_recovered(self):
+#         self.src.recovered = 'RS'
+#         test_name_of_source = 'S1_Cycle1'
+#         with self.assertRaises(TypeError):
+#             self.test_get_sound_data(test_name_of_source)
+#
+#     def test_incorrect_name_of_source(self):
+#         test_name_of_source = 'Aloha'
+#         with self.assertRaises(NameError):
+#             self.test_get_sound_data(test_name_of_source)
+#
+#     def test_incorrect_name_of_source_different_type(self):
+#         test_name_of_source = 5
+#         with self.assertRaises(NameError):
+#             self.test_get_sound_data(test_name_of_source)
+
 # TODO: Write these test cases out
 # class GetSignalTestCase(PrepareDataTestCase):
 #

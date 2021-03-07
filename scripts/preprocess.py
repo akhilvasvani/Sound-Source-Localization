@@ -6,7 +6,7 @@ import sys
 import pathlib
 import scipy.io as sio
 
-from scripts.validations import validate_signal_data, validate_file_path
+from scripts.validations import validate_file_path, validate_signal_data
 
 
 class PrepareData(object):
