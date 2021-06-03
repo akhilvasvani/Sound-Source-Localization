@@ -2,6 +2,7 @@
 """In this script, experiment will use the pyroomacoustics library to
 create the mat file to be used in sound_source_localization"""
 
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -11,29 +12,40 @@ from mpl_toolkits.mplot3d import Axes3D
 import pyroomacoustics as pra
 
 # TODO:
-#       2) Determine the angle, and distance source from microphones are
-#       3) Edit the x, y, z axis to match the heart source project
+#       5) Debug?
 
 
 class ExperimentalMicData(object):
+    """ExperimentalMicData creates an simulation using the Pyroomaoustics library
+       to record the sound data from the microphones into a mat file.
+
+        Attributes:
+            filename: (string) name of the file
+            number_of_mics: (integer) the number of microphones to use
+            **kwargs: the room dimensions and the source dimensions and
+                      microphone locations
+    """
 
     def __init__(self, filename, number_of_mics=4, **kwargs):
+        """Initializes ExperimentalMicData with filename, number_of_mics, and
+           **kwargs."""
         self.filename = None or filename
         self.number_of_mics = number_of_mics
 
-        *self.room_dim, = iter(kwargs.get('room_dim'))
+        *self.room_dim, = (0.34925, 0.219964, 0.2413) if not kwargs.get('room_dim') else iter(kwargs.get('room_dim'))
         *self.source_dim, = iter(kwargs.get('source_dim'))
         *self.microphone_location, = iter(kwargs.get('mic_location'))
 
         self.room = None
         self.microphone_location_to_use = 0
+        self.dist = 0
+        self.true_azimuth, self.true_colatitude = 0, 0
+
+        self.output_file_name = None
 
     def _read_wav_file(self):
         fs, signal = wavfile.read(self.filename)
         return fs, signal
-
-    def set_room(self, sample_fs):
-        self.room = pra.ShoeBox(self.set_room_dimensions(), fs=sample_fs)
 
     def set_room_dimensions(self):
         """Returns the numpy array of the room dimensions with the format:
@@ -44,11 +56,24 @@ class ExperimentalMicData(object):
         """
         return np.array(self.room_dim)
 
+    def set_room(self, sample_fs):
+        self.room = pra.ShoeBox(self.set_room_dimensions(), fs=sample_fs)
+
     def set_sound_source(self, sample_signal):
         """Add a source somewhere in the room"""
         self.room.add_source(self.source_dim, signal=sample_signal)
 
     def set_microphone(self, sample_fs):
+        """Sets the microphone location inside the pra.shoebox. At the moment,
+           the microphone arrangement is in a linear order.
+
+           Args:
+               sample_fs: (float) sample frequency
+
+            Raises:
+                ValueError: if the microphone location is empty.
+        """
+
         # Create a linear array with 4 microphones
         # with angle 0 degrees and inter mic distance 10 cm
         if len(self.room_dim) == 3:  # 3-D
@@ -64,7 +89,20 @@ class ExperimentalMicData(object):
         self.room.add_microphone_array(pra.MicrophoneArray(self.R, fs=sample_fs))
         self.room.simulate()
 
+    def determine_angle_and_distance(self):
+        """Finds the azimuth and colatitude angles in relation to the center of
+           the microphone array (centroid). In addition, determines the distance
+           between the centroid and the sound source. """
+        centroid = np.sum(self.R, axis=-1) / len(self.room_dim)
+        self.dist = math.sqrt(sum([(a - b)**2 for a, b in zip(list(centroid), self.source_dim)]))
+        difference = np.subtract(np.array(self.source_dim), centroid)
+        self.true_azimuth = np.arctan2(difference[1], difference[0])
+        self.true_colatitude = np.arctan(math.sqrt(difference[0]**2 + difference[1]**2)/(difference[-1]))
+
+        return self.dist, self.true_azimuth * 180 / np.pi, self.true_colatitude * 180 / np.pi,
+
     def _plot(self):
+        """Plots the microphones and sound source on a 3-d plot."""
 
         # Create a Figure, label the axis, Title the plot, and set the limits
         fig = plt.figure()
@@ -72,7 +110,7 @@ class ExperimentalMicData(object):
         ax.set_xlabel('Width (X axis)')
         ax.set_ylabel('Depth (Z axis)')
         ax.set_zlabel('Length (Y axis)')
-        ax.set_title("All the Clusters")
+        ax.set_title("Demo: Microphone and Source Location")
         ax.set_xlim(0, self.room_dim[0])
         ax.set_ylim(0, self.room_dim[1])
         ax.set_zlim(0, self.room_dim[2])  # for 3-d
@@ -89,13 +127,15 @@ class ExperimentalMicData(object):
         ax.legend()
         plt.show()
 
-    @staticmethod
-    def _save_file(dict_to_save):
-        name_to_save_file = "".join(["output/", "test_first_fun", ".mat"])
-        savemat(name_to_save_file, dict_to_save)
-        print("Saved file: {}".format(name_to_save_file))
+    def _save_file(self, dict_to_save):
+        self.name_to_save_file = "".join(["output/", "test_first_fun", ".mat"])
+        savemat(self.name_to_save_file, dict_to_save)
+        print("Saved file: {}".format(self.name_to_save_file))
 
-    def run(self):
+    def run(self, plot=False):
+        """Sets the sound source and microphones. Records, and saves data
+           into a mat file. Plots the microphones and sound source in a 3-d
+           plot if necessary."""
 
         fs, signal = self._read_wav_file()
 
@@ -104,17 +144,12 @@ class ExperimentalMicData(object):
         self.set_sound_source(signal)
         self.set_microphone(fs)
 
-        # # DEBUG:
-        # self._plot()
+        if plot:
+            self._plot()
 
         mic_list = ['mic'+str(i) for i in range(1, self.number_of_mics + 1)]
         test_dict = dict(zip(mic_list, self.room.mic_array.signals))
 
         self._save_file(test_dict)
 
-
-head = '/home/akhil/Sound-Source-Localization/data/CMU_ARCTIC/cmu_us_bdl_arctic/wav/'
-sample_filename = "".join([head, 'arctic_a0001.wav'])
-
-ExperimentalMicData(sample_filename, room_dim=[4, 6, 9],
-                    source_dim=[2.5, 4.5, 7.8], mic_location=[2, 1.5, 0]).run()
+        return self.determine_angle_and_distance(), self.name_to_save_file

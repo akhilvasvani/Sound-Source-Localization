@@ -7,7 +7,6 @@ import pyroomacoustics as pra
 
 from itertools import combinations
 
-from scripts.utils import ThreadWithReturnValue
 from scripts.utils import MultiProcessingWithReturnValue
 from scripts.validations import validate_difference_of_arrivals, \
     ValidateCentroid, validate_get_mic_with_sound_data
@@ -15,8 +14,21 @@ from scripts.preprocess import PrepareData
 
 
 # TODO:
-#  3) Test Edge Cases
-#  4) Figure out how to use the GPU threads to run this
+#    1) Determine how to use the "new" updated transform attribute in method,
+#       get_difference_of_arrivals--i.e. will the deprecated version impact
+#       the desired result?
+#    2) Also in the get_difference_of_arrivals function, a post on the pyroomacoustics issue
+#       github page recommended to not use np.linspace(-90, 0, 90) -- or something like?--
+#       for the colatitude and azimuth angle range because the outputted angles (i.e. recon_azimuth)
+#       will be closer to the poles? Need to read-up on this more.
+#    3) In the method, get_estimates, need to add a wrapper (decorator) to test the validations
+#       elsewhere.
+#    4) Process_potential_estimates method has 3 issues:
+#           a) Need to error-handle the splits number. What if the splits do not make sense?
+#              Splits do not divide evenly.
+#           b) Test Multi-processing class
+#           c) For files, other than the heart sounds determine the non-default use-case to run
+#    5) In the run method, determine the non-default use-case to run
 
 class SoundSourceLocation(object):
     """SoundSourceLocation finds the potential location points of a
@@ -135,6 +147,8 @@ class SoundSourceLocation(object):
                  doa.colatitude_recon: (float) Co-latitude angle
         """
 
+        # print(*mic_location)
+
         # Add n-microphone array in [x,y,z] order
         m = np.vstack(list(zip(*mic_location)))
 
@@ -147,6 +161,7 @@ class SoundSourceLocation(object):
             x = np.array([pra.transform.stft.analysis(signal, self.fft_size,
                                                       self.fft_size // 2).T for signal in signal_list])
 
+        # TODO: for azimuth and colatitude, np.linspace might not be optimal
         # Construct the new DOA object
         doa = pra.doa.algorithms.get(self.algo_name)(L=m, fs=self.fs,
                                                      nfft=self.fft_size,
@@ -239,7 +254,8 @@ class SoundSourceLocation(object):
     def process_potential_estimates(self, all_sound_data, number_of_splits=5):
         # TODO:
         #  1) Figure out splits number
-        #  2) Figure out for the Non-default cases
+        #  2) Debug Multi-processing
+        #  3) Figure out for the Non-default case
         """Returns all the estimates for all the microphone combinations
            and re-centers according to the room dimension specifications.
            Microphone combinations are split up into equal chunks and
@@ -277,29 +293,10 @@ class SoundSourceLocation(object):
         mic_split_list = [mic_list[i * splits:(i+1) * splits]
                           for i in range((len(mic_list)+splits-1) // splits)]
 
-
-        threads = []
-        # TODO: Test if Multithread is actually faster??
-        # Go through all the chunks in the multi-thread
-        # start = time.time()
-        for j in range(splits):
-            for i in range(number_of_splits):
-                thread = ThreadWithReturnValue(target=self.get_estimates,
-                                               args=(all_sound_data,
-                                                     *mic_split_list[i][j]))
-                threads.append(thread)
-                thread.start()
-
-        all_estimates = np.array([thread.join() for thread in threads])
-        # end = time.time()
-        # print("Took: ", end - start)  # 107 seconds
-
-        # start = time.time()
-        # test_total_input = ((all_sound_data,
-        #                      mic_split_list[i][j]) for j in range(splits) for i in range(number_of_splits))
-        # all_estimates = np.array(MultiProcessingWithReturnValue(self.get_estimates, *test_total_input).pooled())
-        # end = time.time()
-        # print("Took: ", end - start) # 6 s.
+        sound_data_and_mic_split_combinations = ((all_sound_data,
+                             mic_split_list[i][j]) for j in range(splits) for i in range(number_of_splits))
+        all_estimates = np.array(MultiProcessingWithReturnValue(self.get_estimates,
+                                                                *sound_data_and_mic_split_combinations).pooled())
 
         # Reshape them to (_, 3) which is proper format
         potential_sources = np.reshape(all_estimates,
@@ -329,3 +326,10 @@ class SoundSourceLocation(object):
 method_name = 'SRP'
 b = SoundSourceLocation(method_name).run()
 print(b)
+
+# method_name = 'SRP'
+# test_signal_list = [np.array([i, 2 * i + 1, i - 1]) for i in range(3)]
+# test_mic_location = ([[0, 1, 2], [1, 2, 3], [2, 3, 4]],)
+#
+# b = SoundSourceLocation(method_name).get_difference_of_arrivals(test_signal_list, *test_mic_location)
+# print(b)

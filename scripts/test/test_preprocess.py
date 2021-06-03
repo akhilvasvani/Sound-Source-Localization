@@ -2,6 +2,8 @@ import unittest
 
 from scripts.preprocess import PrepareData
 
+# TODO: Write test cases out
+
 
 class PrepareDataTestCase(unittest.TestCase):
     def setUp(self):
@@ -57,6 +59,16 @@ class InitTestCase(PrepareDataTestCase):
 #
 #     def test
 
+#
+#     # ## THIS TEST SHOULD BE MOVED. NOT NEEDED FOR SIGNAL PROCESSING
+#     # def test_sound_data_empty_arrays(self):
+#     #     test_mic_loc = [[i, i + 1, i + 2] for i in range(3)]
+#     #     test_sound_data = [np.array([]), np.array([]), np.array([])]
+#     #     test_mic_list = ['mic1', 'mic2', 'mic3']
+#     #
+#     #     test_mic_loc_sound_data = dict(zip(test_mic_list, list(zip(test_mic_loc, test_sound_data))))
+#     #     with self.assertRaises(ValueError):
+#     #         self.test_get_mic_match_with_sound_data(test_mic_loc_sound_data, test_mic_list)
 
 if __name__ == '__main__':
     unittest.main()

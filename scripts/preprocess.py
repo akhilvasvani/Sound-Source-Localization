@@ -5,8 +5,13 @@ one list."""
 import sys
 import pathlib
 import scipy.io as sio
+import numpy as np
 
 from scripts.validations import validate_file_path, validate_signal_data
+
+# TODO:
+#     1) In method, get_signal,look into why inner functions cannot inherit from outer functions...
+#     2) Debug?
 
 
 class PrepareData(object):
@@ -21,17 +26,18 @@ class PrepareData(object):
             s1_bool: (boolean) specifies whether to look for S1 or S2
                      sound source. Default: True
             default: (boolean) Used for my original project purpose.
+                     Default: True
     """
 
     @validate_file_path
-    def __init__(self, filepath, recovered=False):
-        """Initializes PrepareData with filepath and recovered."""
+    def __init__(self, filepath, default=True, recovered=False):
+        """Initializes PrepareData with filepath, default, and recovered."""
 
         self.filepath = filepath
+        self.default = default
         self.recovered = recovered
 
         self.s1_bool = True
-        self.default = True
 
     @staticmethod
     def _set_microphone_locations(**kwargs):
@@ -71,7 +77,10 @@ class PrepareData(object):
 
     def _read_mat_file(self, sample_filepath):
         try:
-            sio.loadmat(sample_filepath)
+            data = {key: value for key, value in sio.loadmat(sample_filepath).items() if 'mic' in key}
+            print(np.array(data.values()))
+            return self._get_mic_signal_location(np.array(data.values()))
+
         except OSError:
             # Check if the file does in fact exist
 
@@ -172,6 +181,8 @@ class PrepareData(object):
             # Each microphone location MUST match the corresponding microphone data
             all_microphone_locations_and_data = list(zip(all_microphone_locations,
                                                          (row for row in data)))
+
+            print(all_microphone_locations_and_data)
 
             # Dictionary of the microphone locations and their respective signals
             # The key is the specific microphone, and the value is a list--

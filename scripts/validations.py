@@ -5,6 +5,11 @@ for all the functions and classes."""
 import functools
 import numpy as np
 
+# TODO:
+#  1) Clean up repeatedly used functions. Why can't class decorators inherit from other decorators?
+#  2) The main test classes are: signal data list, microphone location list. We should all the other decorators
+#     add onto these initial decorators.
+
 
 class ValidateList(object):
     """Class decorator which checks the list type
@@ -79,7 +84,7 @@ def validate_file_path(func):
     """Validates file_name type and if a .mat file."""
 
     @functools.wraps(func)
-    def validated(*args):
+    def validated(*args, **kwargs):
         file_name = args[-1]
         if not validate_instance_type(file_name, str):
             raise TypeError("Filename is not a string type.")
@@ -87,7 +92,7 @@ def validate_file_path(func):
         #     raise ValueError("Error. Filename is not a MAT file. Require "
         #                      "specific form to perform sound source "
         #                      "localization.")
-        result = func(*args)
+        result = func(*args, **kwargs)
         return result
     return validated
 
@@ -150,9 +155,6 @@ def validate_get_mic_with_sound_data(func):
             raise ValueError('Error. Microphone_Location dictionary is empty.')
         if not mic_list:
             raise ValueError('Error. Microphone list is empty.')
-        # for key in mic_loc_dict.keys():
-        #     if not key.tolist():
-        #         raise ValueError()
         result = func(*args)
         return result
     return validated
@@ -176,7 +178,9 @@ def validate_difference_of_arrivals(func):
         if validate_empty_list(mic_location):
             raise ValueError('Error. Microphone location list is empty.')
         if None in mic_location:
-            raise ValueError('Error. None in microphone location list is empty.')
+            raise ValueError('Error. None in microphone location list.')
+        # if any([True for mic in mic_location if None in mic]):
+        #     raise ValueError('Error. None in microphone location list.')
         # This works for lists of lists, but not for single list
         if any([True for signal in signal_list if None in signal]):
             raise ValueError('Error. None in signal list.')
