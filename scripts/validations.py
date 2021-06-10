@@ -85,7 +85,7 @@ def validate_file_path(func):
 
     @functools.wraps(func)
     def validated(*args, **kwargs):
-        file_name = args[-1]
+        file_name = args[1]
         if not validate_instance_type(file_name, str):
             raise TypeError("Filename is not a string type.")
         # if not file_name.endswith(".mat"): ## NOT YET
@@ -97,20 +97,38 @@ def validate_file_path(func):
     return validated
 
 
+def validate_room_source_dim_and_mic_loc(func):
+    """Validates that there the room dimension, source dimensions and
+       microphone locations are set."""
+
+    @functools.wraps(func)
+    def validated(*args, **kwargs):
+        if not kwargs.get('room_dim'):
+            raise ValueError("Error. Need room dimensions.")
+        if not kwargs.get('source_dim'):
+            raise ValueError("Error. Need source dimensions.")
+        if not kwargs.get('mic_location'):
+            raise ValueError("Error. Need microphone locations.")
+        result = func(*args, **kwargs)
+        return result
+    return validated
+
+
 def validate_signal_data(func):
     """Validates the signal data for a numpy array, an empty numpy array,
        None in the array, an empty string, or if the list is empty."""
 
     @functools.wraps(func)
     def validated(*args):
-        if not validate_instance_type(args[-1], np.ndarray):
-            raise TypeError("Error. Signal data is not a numpy array")
-        if not args[-1].tolist() or (args[-1].size == 1 and None in args[-1].tolist()):
-            raise ValueError("Error. The signal is empty.")
-        if None in args[-1]:
-            raise ValueError('Error. The signal contains None.')
-        if "" in args[-1].tolist():
-            raise ValueError('Error. The signal contains an empty string.')
+        for sample_array in args[-1]:
+            if not validate_instance_type(sample_array, np.ndarray):
+                raise TypeError("Error. Signal data is not a numpy array.")
+            if not sample_array.tolist() or (sample_array.size == 1 and None in sample_array.tolist()):
+                raise ValueError("Error. The signal is empty.")
+            if None in sample_array.tolist():
+                raise ValueError('Error. The signal contains None.')
+            if "" in sample_array.tolist():
+                raise ValueError('Error. The signal contains an empty string.')
         result = func(*args)
         return result
     return validated

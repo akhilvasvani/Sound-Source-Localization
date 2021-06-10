@@ -5,12 +5,10 @@ one list."""
 import sys
 import pathlib
 import scipy.io as sio
-import numpy as np
 
 from scripts.validations import validate_file_path, validate_signal_data
 
 # TODO:
-#     1) In method, get_signal,look into why inner functions cannot inherit from outer functions...
 #     2) Debug?
 
 
@@ -30,7 +28,7 @@ class PrepareData(object):
     """
 
     @validate_file_path
-    def __init__(self, filepath, default=True, recovered=False):
+    def __init__(self, filepath, *args, default=True, recovered=False):
         """Initializes PrepareData with filepath, default, and recovered."""
 
         self.filepath = filepath
@@ -39,8 +37,9 @@ class PrepareData(object):
 
         self.s1_bool = True
 
-    @staticmethod
-    def _set_microphone_locations(**kwargs):
+        self._microphone_locations = args or None
+
+    def _set_microphone_locations(self):
         """Returns microphone locations list. The x dimension,
            y dimension, and z dimension serve as optional input
            arguments.
@@ -50,15 +49,11 @@ class PrepareData(object):
                                  y_locations = [-0.109982],
                                  z_locations = [0.056388, 0.001524, -0.053340, -0.108204])
 
-           Args:
-               **kwargs: takes in as input the x dimension,
-                         y dimension, and z dimension
-                         inputs.
           Returns:
               List of lists which has the coordinates
         """
 
-        if not kwargs:
+        if self.default:
             # Microphone x,y,z locations
             x_locations = [-0.102235, -0.052197, -0.027304]
             y_locations = [-0.109982]
@@ -67,19 +62,12 @@ class PrepareData(object):
             # Return the microphone list
             return [[x, y, z] for x in x_locations for y in y_locations for z in z_locations]
 
-        list_of_dimension_names = list(kwargs.keys())
-
-        x_locations = kwargs.get(list_of_dimension_names[0])
-        y_locations = kwargs.get(list_of_dimension_names[1])
-        z_locations = kwargs.get(list_of_dimension_names[2])
-
-        return [[x, y, z] for x in x_locations for y in y_locations for z in z_locations]
+        return [location for location in self._microphone_locations]
 
     def _read_mat_file(self, sample_filepath):
         try:
-            data = {key: value for key, value in sio.loadmat(sample_filepath).items() if 'mic' in key}
-            print(np.array(data.values()))
-            return self._get_mic_signal_location(np.array(data.values()))
+            data = {key: value[0] for key, value in sio.loadmat(sample_filepath).items() if 'mic' in key}
+            return self._get_mic_signal_location(list(data.values()))
 
         except OSError:
             # Check if the file does in fact exist
@@ -131,10 +119,8 @@ class PrepareData(object):
 
             # Match the correct data with the name
             full_data_file_path = "".join([self.filepath,
-                                           source_name_dict.get(name_of_source)[0]])
+                                           source_name_dict.get(name_of_source)[0], ".mat"])
 
-            # TODO: Need to figure out how to use _read_mat_file here,
-            #       but for now this works
             data = sio.loadmat(full_data_file_path)
             return data.get(source_name_dict.get(name_of_source)[1])
 
@@ -182,8 +168,6 @@ class PrepareData(object):
             all_microphone_locations_and_data = list(zip(all_microphone_locations,
                                                          (row for row in data)))
 
-            print(all_microphone_locations_and_data)
-
             # Dictionary of the microphone locations and their respective signals
             # The key is the specific microphone, and the value is a list--
             # the first is the microphone location, followed by the signal.
@@ -217,4 +201,4 @@ class PrepareData(object):
                 yield self._get_mic_signal_location(self.get_signal(source_name)), \
                       self.s1_bool
 
-        return self.get_signal(None)
+        yield self.get_signal(None)

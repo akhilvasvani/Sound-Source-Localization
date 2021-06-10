@@ -11,8 +11,11 @@ from mpl_toolkits.mplot3d import Axes3D
 
 import pyroomacoustics as pra
 
+from scripts.validations import validate_room_source_dim_and_mic_loc
+
 # TODO:
 #       5) Debug?
+#       6) Custom Microphone set up!
 
 
 class ExperimentalMicData(object):
@@ -26,13 +29,14 @@ class ExperimentalMicData(object):
                       microphone locations
     """
 
+    @validate_room_source_dim_and_mic_loc
     def __init__(self, filename, number_of_mics=4, **kwargs):
         """Initializes ExperimentalMicData with filename, number_of_mics, and
            **kwargs."""
         self.filename = None or filename
         self.number_of_mics = number_of_mics
 
-        *self.room_dim, = (0.34925, 0.219964, 0.2413) if not kwargs.get('room_dim') else iter(kwargs.get('room_dim'))
+        *self.room_dim, = iter(kwargs.get('room_dim'))
         *self.source_dim, = iter(kwargs.get('source_dim'))
         *self.microphone_location, = iter(kwargs.get('mic_location'))
 
@@ -135,7 +139,8 @@ class ExperimentalMicData(object):
     def run(self, plot=False):
         """Sets the sound source and microphones. Records, and saves data
            into a mat file. Plots the microphones and sound source in a 3-d
-           plot if necessary."""
+           plot if necessary. Reconverts microphone coordinates in terms of
+           center of the room."""
 
         fs, signal = self._read_wav_file()
 
@@ -152,4 +157,15 @@ class ExperimentalMicData(object):
 
         self._save_file(test_dict)
 
-        return self.determine_angle_and_distance(), self.name_to_save_file
+        # Note: transposed microphone locations, so list is in x, y, z order
+        reconverted_mic_locs = np.subtract(self.R.T, self.set_room_dimensions()/2).tolist()
+
+        return self.determine_angle_and_distance(), self.name_to_save_file, reconverted_mic_locs
+
+
+# CREATE A NEW FUNCTION FOR CUSTOM MIC SETUPS
+        # x_locations = self._microphone_locations[0]
+        # y_locations = self._microphone_locations[1]
+        # z_locations = self._microphone_locations[2]
+        #
+        # return [[x, y, z] for x in x_locations for y in y_locations for z in z_locations]

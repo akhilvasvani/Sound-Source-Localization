@@ -311,21 +311,28 @@ class SoundSourceLocation(object):
         # Format: (Width, Depth, Length)
         return np.add(center_of_room, potential_sources)
 
-    def run(self):
+    def run(self, *args):
         # TODO: Figure out for the default
         """Runs all the functions."""
 
-        head = '/home/akhil/Sound-Source-Localization/data/heart sound/raw/'
-        src1 = PrepareData(head).load_file()
-        # for mic_info, self.s1_bool in src1:
-        #     yield self.process_potential_estimates(mic_info)
-        mic_info, self.s1_bool = next(src1)
+        # head = '/home/akhil/Sound-Source-Localization/data/heart sound/raw/'
+        # src1 = PrepareData(head).load_file()
+
+        mic_info, self.s1_bool = args[0], args[-1]
         return self.process_potential_estimates(mic_info)
 
+        # for mic_info, self.s1_bool in args:
+        #     yield self.process_potential_estimates(mic_info)
 
-method_name = 'SRP'
-b = SoundSourceLocation(method_name).run()
-print(b)
+        # for mic_info, self.s1_bool in src1:
+        #     yield self.process_potential_estimates(mic_info)
+        # mic_info, self.s1_bool = next(src1)
+        # return self.process_potential_estimates(mic_info)
+
+
+# method_name = 'SRP'
+# b = SoundSourceLocation(method_name).run()
+# print(b)
 
 # method_name = 'SRP'
 # test_signal_list = [np.array([i, 2 * i + 1, i - 1]) for i in range(3)]

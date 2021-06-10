@@ -1,37 +1,44 @@
 # !/usr/bin/env python
 """This is the main driver file."""
 
-# from scripts.sound_source_localization import SoundSourceLocation
+from scripts.sound_source_localization import SoundSourceLocation
 from experiment import ExperimentalMicData
 from preprocess import PrepareData
 # from scripts.determine_source import TrueSourceLocation
 
 
-def main():
+def main(experi=True):
 
-    # head = '/home/akhil/Sound-Source-Localization/data/CMU_ARCTIC/cmu_us_bdl_arctic/wav/'
-    # sample_filename = "".join([head, 'arctic_a0001.wav'])
-    #
-    # microphone_location = [15 / 100, 3 / 100, 0 / 100]
-    # source_location = [2.5 / 100, 4.5 / 100, 7.8 / 100]
-    #
-    # distance, *true_angles, output_file_name = ExperimentalMicData(sample_filename,
-    #                                              source_dim=source_location,
-    #                                              mic_location=microphone_location).run()
+    if not experi:
+        head = '/home/akhil/Sound-Source-Localization/data/heart sound/raw/'
+        method_name = 'SRP'
 
-    # Truth
-    # test_data = PrepareData(output_file_name).load_file()
-    # a = next(test_data)
+        test_data = PrepareData(head).load_file()
 
-    output_file_name = '/home/akhil/Sound-Source-Localization/scripts/output/test_first_fun.mat'
+        for _ in range(2):
+            sample_mic_signal_loc_dict, s1_bool = next(test_data)
+            sound_cycle, source_estimates = SoundSourceLocation(head, method_name).run(sample_mic_signal_loc_dict,
+                                                                                       s1_bool)
+            print(sound_cycle, source_estimates)
 
-    test_data = PrepareData(output_file_name, default=False)
-    b = test_data.load_file()
-    print(*b)
-    # a = next(b)
-    # print(a)
+    if experi:
+        head = '/home/akhil/Sound-Source-Localization/data/CMU_ARCTIC/cmu_us_bdl_arctic/wav/'
+        sample_filename = "".join([head, 'arctic_a0001.wav'])
 
+        method_name = 'SRP'
 
+        room_dimensions = [50/100, 50/100, 50/100]
+        microphone_location = [15 / 100, 0 / 100, 3 / 100]
+        source_location = [2.5 / 100, 4.5 / 100, 7.8 / 100]
+
+        distance, *true_angles, output_file_name, mic_locs = ExperimentalMicData(sample_filename,
+                                                                       room_dim=room_dimensions,
+                                                                       source_dim=source_location,
+                                                                       mic_location=microphone_location).run()
+
+        sample_mic_signal_loc_dict = PrepareData(output_file_name, *mic_locs, default=False).load_file()
+        a = next(sample_mic_signal_loc_dict)
+        print(a)
 
     # ## OLD OLD OLD
     #
@@ -52,5 +59,6 @@ def main():
     # # ts1 = TrueSourceLocation(method_name, sound_cycle, source_estimates_1)
     # # ts2 = TrueSourceLocation(method_name, sound_cycle, source_estimates_2)
 
+
 if __name__ == '__main__':
-    main()
+    main(experi=False)
