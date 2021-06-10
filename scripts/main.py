@@ -2,9 +2,9 @@
 """This is the main driver file."""
 
 from scripts.sound_source_localization import SoundSourceLocation
-from experiment import ExperimentalMicData
-from preprocess import PrepareData
-# from scripts.determine_source import TrueSourceLocation
+from scripts.experiment import ExperimentalMicData
+from scripts.preprocess import PrepareData
+from scripts.determine_source import DetermineSourceLocation
 
 
 def main(experi=True):
@@ -13,13 +13,15 @@ def main(experi=True):
         head = '/home/akhil/Sound-Source-Localization/data/heart sound/raw/'
         method_name = 'SRP'
 
-        test_data = PrepareData(head).load_file()
+        test_data = PrepareData(head, default=True).load_file()
 
         for _ in range(2):
-            sample_mic_signal_loc_dict, s1_bool = next(test_data)
-            sound_cycle, source_estimates = SoundSourceLocation(head, method_name).run(sample_mic_signal_loc_dict,
-                                                                                       s1_bool)
-            print(sound_cycle, source_estimates)
+            sample_mic_signal_loc_dict, s1_or_not, sound_cycle = next(test_data)
+            source_estimates = SoundSourceLocation(method_name,
+                                                   s1_bool=s1_or_not,
+                                                   default=True).run(sample_mic_signal_loc_dict)
+            ts1 = DetermineSourceLocation(method_name, sound_cycle,
+                                          *source_estimates).room_filter_out()
 
     if experi:
         head = '/home/akhil/Sound-Source-Localization/data/CMU_ARCTIC/cmu_us_bdl_arctic/wav/'
@@ -36,21 +38,16 @@ def main(experi=True):
                                                                        source_dim=source_location,
                                                                        mic_location=microphone_location).run()
 
-        sample_mic_signal_loc_dict = PrepareData(output_file_name, *mic_locs, default=False).load_file()
-        a = next(sample_mic_signal_loc_dict)
-        print(a)
+        test_data = PrepareData(output_file_name, *mic_locs).load_file()
+        sample_mic_signal_loc_dict = next(test_data)
+        source_estimates = SoundSourceLocation(method_name,
+                                               number_of_mic_splits=3,
+                                               s1_bool=None,
+                                               x_dim_max=room_dimensions[0],
+                                               y_dim_max=room_dimensions[1],
+                                               z_dim_max=room_dimensions[2]).run(sample_mic_signal_loc_dict)
+        print(*source_estimates)
 
-    # ## OLD OLD OLD
-    #
-    # # Add in arguments to read in file
-    # head = '/home/akhil/Sound-Source-Localization/data/raw/'
-    #
-    # method_name = 'SRP'
-    #
-    # src1 = SoundSourceLocation(head, method_name)
-    # sound_cycle, source_estimates = src1.run()
-    # # ts1 = TrueSourceLocation(method_name, sound_cycle, source_estimates)
-    # # print(ts1.room_filter_out())
     #
     # # DEBUG:
     # # sound_cycle = 'S1_Cycle0'
@@ -61,4 +58,4 @@ def main(experi=True):
 
 
 if __name__ == '__main__':
-    main(experi=False)
+    main(experi=True)

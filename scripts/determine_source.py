@@ -9,14 +9,15 @@ import matplotlib.pyplot as plt
 import csv
 
 
-class TrueSourceLocation(SoundSourceLocation):
+class DetermineSourceLocation(SoundSourceLocation):
 
-    def __init__(self, algo_name, source_name, all_source_estimates):
+    def __init__(self, algo_name, source_name, all_source_estimates,
+                 room_dimensions=[0.34925, 0.219964, 0.2413]):
         super().__init__(self, algo_name)
         self.source_name = source_name
         self.all_source_estimates = all_source_estimates
 
-        self.center_of_room = np.array([0.34925, 0.219964, 0.2413])/2
+        self.center_of_room = np.array(room_dimensions)/2
 
         self.filename = "_".join(['mic', str(self.combinations_number), str(self.source_name),
                              "".join(['sound_source_localization_c',

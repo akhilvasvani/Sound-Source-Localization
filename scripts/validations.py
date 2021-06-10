@@ -3,6 +3,7 @@
 for all the functions and classes."""
 
 import functools
+import warnings
 import numpy as np
 
 # TODO:
@@ -78,6 +79,17 @@ def validate_instance_type(sample_object, sample_type):
 
 def validate_empty_list(sample_list):
     return True if not sample_list else False
+
+
+def validate_splits(sample_splits):
+    if 0 < sample_splits < 4:
+        warnings.warn("Warning: Not enough splits for multiprocessing. "
+                      "Expect execution time to be significantly increased.")
+        return sample_splits
+    elif sample_splits == 0:
+        raise ZeroDivisionError('Cannot create splits with no splits.')
+    else:
+        return sample_splits
 
 
 def validate_file_path(func):

@@ -9,8 +9,7 @@ from itertools import combinations
 
 from scripts.utils import MultiProcessingWithReturnValue
 from scripts.validations import validate_difference_of_arrivals, \
-    ValidateCentroid, validate_get_mic_with_sound_data
-from scripts.preprocess import PrepareData
+    ValidateCentroid, validate_get_mic_with_sound_data, validate_splits
 
 
 # TODO:
@@ -24,11 +23,7 @@ from scripts.preprocess import PrepareData
 #    3) In the method, get_estimates, need to add a wrapper (decorator) to test the validations
 #       elsewhere.
 #    4) Process_potential_estimates method has 3 issues:
-#           a) Need to error-handle the splits number. What if the splits do not make sense?
-#              Splits do not divide evenly.
 #           b) Test Multi-processing class
-#           c) For files, other than the heart sounds determine the non-default use-case to run
-#    5) In the run method, determine the non-default use-case to run
 
 class SoundSourceLocation(object):
     """SoundSourceLocation finds the potential location points of a
@@ -38,8 +33,11 @@ class SoundSourceLocation(object):
     Attributes:
         algo_name: (string) specific distance of arrival (DOA) method
         num_sources: (integer) number of sources to find. Default is 1
+        number_of_mic_splits: (integer) the number of splits for
+                      multiprocessing. Default: 5
         sound_speed: (float) specific speed of sound
-        combinations_number: (integer) number of microphone to use
+        mic_combinations_number: (integer) number of microphone to use
+
         fs: (integer) specific sampling frequency. Default is 16000
         fft_size: (integer) specific FFT size. Default is 256
         freq_range: (list) specific frequency range to isolate for.
@@ -56,17 +54,19 @@ class SoundSourceLocation(object):
            or the deprecated version
     """
 
-    def __init__(self, algo_name, num_sources=1, s1_bool=True,
-                 x_dim_max=0.34925, y_dim_max=0.219964,
-                 z_dim_max=0.2413, transform=False):
+    def __init__(self, algo_name, num_sources=1, number_of_mic_splits=5,
+                 s1_bool=True, x_dim_max=0.34925, y_dim_max=0.219964,
+                 z_dim_max=0.2413, transform=False, default=False):
         """Initializes SoundSourceLocation with algo_name, num_sources."""
 
         self.algo_name = algo_name
         self.num_sources = num_sources
+        self.number_of_mic_splits = number_of_mic_splits
 
         # Constants
         self.sound_speed = 30
-        self.combinations_number = 3
+        self.mic_combinations_number = 3
+
         self.fs = 16000
         self.fft_size = 256
         self.freq_range = [0, 250]
@@ -81,6 +81,8 @@ class SoundSourceLocation(object):
 
         # TODO: DEBUG
         self.transform = transform
+
+        self.default = default
 
     @staticmethod
     @ValidateCentroid
@@ -251,11 +253,10 @@ class SoundSourceLocation(object):
             return self.split_and_conquer(centroid, cartesian_coordinates)
         return self.radius * cartesian_coordinates.T + np.array(centroid)[np.newaxis, :]
 
-    def process_potential_estimates(self, all_sound_data, number_of_splits=5):
+    def process_potential_estimates(self, all_sound_data):
         # TODO:
-        #  1) Figure out splits number
         #  2) Debug Multi-processing
-        #  3) Figure out for the Non-default case
+
         """Returns all the estimates for all the microphone combinations
            and re-centers according to the room dimension specifications.
            Microphone combinations are split up into equal chunks and
@@ -263,38 +264,37 @@ class SoundSourceLocation(object):
 
            Args:
                all_sound_data: (numpy array) the entire microphone signal data
-               number_of_splits: (integer) the number of splits for mulithreading?
 
             Returns:
                 numpy array of the potential estimates re-centered according
                 to the room specifications.
         """
 
-        # If DEFAULT
+        if self.default:
 
-        if self.s1_bool:
-            # List of specific microphones to quickly find S1
-            # (where M and T are located)
-            mics = ["".join(['mic', str(i)]) for i in [2, 3, 6, 7, 10, 11]]
+            if self.s1_bool:
+                # List of specific microphones to quickly find S1
+                # (where M and T are located)
+                mics = ["".join(['mic', str(i)]) for i in [2, 3, 6, 7, 10, 11]]
 
+            else:
+                # List of specific microphones to quickly find S2
+                # (where P and A are located)
+                mics = ["".join(['mic', str(i)]) for i in [1, 2, 5, 6, 9, 10]]
         else:
-            # List of specific microphones to quickly find S2
-            # (where P and A are located)
-            mics = ["".join(['mic', str(i)]) for i in [1, 2, 5, 6, 9, 10]]
+            # microphone locations?
+            mics = ["".join(['mic', str(i+1)]) for i in range(len(list(all_sound_data.keys())))]
 
-        # ELSE # microphone locations?
-        # mics = ["".join(['mic', str(i+1)]) for i in range(len(     ))]
+        mic_list = list(combinations(mics, self.mic_combinations_number))
 
-        mic_list = list(combinations(mics, self.combinations_number))
-
-        splits = len(mic_list) // number_of_splits
+        splits = validate_splits(len(mic_list) // self.number_of_mic_splits)
 
         # Split up the mic list into chunks of the same size
         mic_split_list = [mic_list[i * splits:(i+1) * splits]
                           for i in range((len(mic_list)+splits-1) // splits)]
 
         sound_data_and_mic_split_combinations = ((all_sound_data,
-                             mic_split_list[i][j]) for j in range(splits) for i in range(number_of_splits))
+                             mic_split_list[i][j]) for j in range(splits) for i in range(self.number_of_mic_splits))
         all_estimates = np.array(MultiProcessingWithReturnValue(self.get_estimates,
                                                                 *sound_data_and_mic_split_combinations).pooled())
 
@@ -312,27 +312,19 @@ class SoundSourceLocation(object):
         return np.add(center_of_room, potential_sources)
 
     def run(self, *args):
-        # TODO: Figure out for the default
         """Runs all the functions."""
 
-        # head = '/home/akhil/Sound-Source-Localization/data/heart sound/raw/'
-        # src1 = PrepareData(head).load_file()
-
-        mic_info, self.s1_bool = args[0], args[-1]
-        return self.process_potential_estimates(mic_info)
-
-        # for mic_info, self.s1_bool in args:
-        #     yield self.process_potential_estimates(mic_info)
-
-        # for mic_info, self.s1_bool in src1:
-        #     yield self.process_potential_estimates(mic_info)
-        # mic_info, self.s1_bool = next(src1)
-        # return self.process_potential_estimates(mic_info)
+        mic_info = args[0]
+        yield self.process_potential_estimates(mic_info)
 
 
 # method_name = 'SRP'
-# b = SoundSourceLocation(method_name).run()
-# print(b)
+# head = '/home/akhil/Sound-Source-Localization/data/heart sound/raw/'
+# src1 = PrepareData(head).load_file()
+# sample_mic_signal_loc_dict, s1_bool = next(src1)
+#
+# b = SoundSourceLocation(method_name).run(sample_mic_signal_loc_dict, s1_bool)
+# print(*b)
 
 # method_name = 'SRP'
 # test_signal_list = [np.array([i, 2 * i + 1, i - 1]) for i in range(3)]

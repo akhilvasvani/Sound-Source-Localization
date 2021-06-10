@@ -28,7 +28,7 @@ class PrepareData(object):
     """
 
     @validate_file_path
-    def __init__(self, filepath, *args, default=True, recovered=False):
+    def __init__(self, filepath, *args, default=False, recovered=False):
         """Initializes PrepareData with filepath, default, and recovered."""
 
         self.filepath = filepath
@@ -197,8 +197,8 @@ class PrepareData(object):
                                             str(j)]) for j in range(24)]:
                     self.s1_bool = False
 
-                # Microphone, microphone signal, location lists, and S1_bool
+                # Microphone, microphone signal, location lists, S1_bool, and sound cycle
                 yield self._get_mic_signal_location(self.get_signal(source_name)), \
-                      self.s1_bool
+                      self.s1_bool, source_name
 
         yield self.get_signal(None)
