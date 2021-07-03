@@ -55,8 +55,8 @@ class SoundSourceLocation(object):
     """
 
     def __init__(self, algo_name, num_sources=1, number_of_mic_splits=5,
-                 s1_bool=True, x_dim_max=0.34925, y_dim_max=0.219964,
-                 z_dim_max=0.2413, transform=False, default=False):
+                 sampling_rate=16000, s1_bool=True, x_dim_max=0.34925,
+                 y_dim_max=0.219964, z_dim_max=0.2413, transform=False, default=False):
         """Initializes SoundSourceLocation with algo_name, num_sources."""
 
         self.algo_name = algo_name
@@ -67,7 +67,7 @@ class SoundSourceLocation(object):
         self.sound_speed = 30
         self.mic_combinations_number = 3
 
-        self.fs = 16000
+        self.fs = sampling_rate
         self.fft_size = 256
         self.freq_range = [0, 250]
         self.tol = 1e-3  # 3e-3
@@ -317,14 +317,6 @@ class SoundSourceLocation(object):
         mic_info = args[0]
         yield self.process_potential_estimates(mic_info)
 
-
-# method_name = 'SRP'
-# head = '/home/akhil/Sound-Source-Localization/data/heart sound/raw/'
-# src1 = PrepareData(head).load_file()
-# sample_mic_signal_loc_dict, s1_bool = next(src1)
-#
-# b = SoundSourceLocation(method_name).run(sample_mic_signal_loc_dict, s1_bool)
-# print(*b)
 
 # method_name = 'SRP'
 # test_signal_list = [np.array([i, 2 * i + 1, i - 1]) for i in range(3)]

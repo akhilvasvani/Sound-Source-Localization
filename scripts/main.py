@@ -1,9 +1,9 @@
 # !/usr/bin/env python
 """This is the main driver file."""
 
-from scripts.sound_source_localization import SoundSourceLocation
 from scripts.experiment import ExperimentalMicData
 from scripts.preprocess import PrepareData
+from scripts.sound_source_localization import SoundSourceLocation
 from scripts.determine_source import DetermineSourceLocation
 
 
@@ -20,8 +20,9 @@ def main(experi=True):
             source_estimates = SoundSourceLocation(method_name,
                                                    s1_bool=s1_or_not,
                                                    default=True).run(sample_mic_signal_loc_dict)
-            ts1 = DetermineSourceLocation(method_name, sound_cycle,
-                                          *source_estimates).room_filter_out()
+            print(*source_estimates)
+            # ts1 = DetermineSourceLocation(method_name, sound_cycle,
+            #                               *source_estimates).room_filter_out()
 
     if experi:
         head = '/home/akhil/Sound-Source-Localization/data/CMU_ARCTIC/cmu_us_bdl_arctic/wav/'
@@ -33,7 +34,7 @@ def main(experi=True):
         microphone_location = [15 / 100, 0 / 100, 3 / 100]
         source_location = [2.5 / 100, 4.5 / 100, 7.8 / 100]
 
-        distance, *true_angles, output_file_name, mic_locs = ExperimentalMicData(sample_filename,
+        distance, *true_angles, output_file_name, mic_locs, sample_rate = ExperimentalMicData(sample_filename,
                                                                        room_dim=room_dimensions,
                                                                        source_dim=source_location,
                                                                        mic_location=microphone_location).run()
@@ -58,4 +59,4 @@ def main(experi=True):
 
 
 if __name__ == '__main__':
-    main(experi=True)
+    main(experi=False)

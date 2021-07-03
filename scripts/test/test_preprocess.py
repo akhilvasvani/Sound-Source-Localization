@@ -1,74 +1,103 @@
 import unittest
+import numpy as np
 
 from scripts.preprocess import PrepareData
-
-# TODO: Write test cases out
 
 
 class PrepareDataTestCase(unittest.TestCase):
     def setUp(self):
-        sample_filepath = '/home/akhil/Sound-Source-Localization/data/raw/'
+        head = '/home/akhil/Sound-Source-Localization/data/'
+        sample_filepath_default = "".join([head, 'raw/'])
+        sample_filename_non_default = "".join([head,
+                                               'CMU_ARCTIC/cmu_us_bdl_arctic/wav/',
+                                               'arctic_a0001.wav'])
 
-        self.src1 = PrepareData(sample_filepath)
-
-        self.test_read_mat_file = self.src1._read_mat_file
-        self.test_get_signal = self.src1.get_signal
-        self.test_get_mic_signal_location = self.src1._get_mic_signal_location
+        self.src_default = PrepareData(sample_filepath_default, default=True)
+        self.src_non_default = PrepareData(sample_filename_non_default)
 
 
 class InitTestCase(PrepareDataTestCase):
     """
-    Test that the initial attributes are set up correctly
+    Test that the initial attributes are set up correctly for both
+    default and non-default cases.
     """
 
-    def test_filepath_type(self):
+    def test_default_filepath_type(self):
         test_case = 56
         with self.assertRaises(TypeError):
-            self.test_read_mat_file(test_case)
+            self.src_default._read_mat_file(test_case)
+
+    def test_non_default_filepath_type(self):
+        test_case = -9.0
+        with self.assertRaises(TypeError):
+            self.src_non_default._read_mat_file(test_case)
 
 
-### MIGHT BE USEFUL?
-# class GetSoundDataTestCase(SoundSourceLocationTestCase):
-#     """
-#     Test to gather sound data
-#     """
-#
-#     def test_recovered(self):
-#         self.src.recovered = 'RS'
-#         test_name_of_source = 'S1_Cycle1'
-#         with self.assertRaises(TypeError):
-#             self.test_get_sound_data(test_name_of_source)
-#
-#     def test_incorrect_name_of_source(self):
-#         test_name_of_source = 'Aloha'
-#         with self.assertRaises(NameError):
-#             self.test_get_sound_data(test_name_of_source)
-#
-#     def test_incorrect_name_of_source_different_type(self):
-#         test_name_of_source = 5
-#         with self.assertRaises(NameError):
-#             self.test_get_sound_data(test_name_of_source)
+class ReadMatFileCase(PrepareDataTestCase):
+    """
+    Test that the mat file is read in correctly for
+    both default and non-default cases.
+    """
 
-# TODO: Write these test cases out
-# class GetSignalTestCase(PrepareDataTestCase):
-#
-#     def test
+    def test_default_file_incorrect(self):
+        test_case = 'bananas'
+        with self.assertRaises(FileNotFoundError):
+            self.src_default._read_mat_file(test_case)
 
-# TODO: Write these test cases out
-# class GetMicSignalLocationTestCase(PrepareDataTestCase):
-#
-#     def test
+    def test_non_default_file_incorrect(self):
+        test_case = '1245'
+        with self.assertRaises(FileNotFoundError):
+            self.src_non_default._read_mat_file(test_case)
 
-#
-#     # ## THIS TEST SHOULD BE MOVED. NOT NEEDED FOR SIGNAL PROCESSING
-#     # def test_sound_data_empty_arrays(self):
-#     #     test_mic_loc = [[i, i + 1, i + 2] for i in range(3)]
-#     #     test_sound_data = [np.array([]), np.array([]), np.array([])]
-#     #     test_mic_list = ['mic1', 'mic2', 'mic3']
-#     #
-#     #     test_mic_loc_sound_data = dict(zip(test_mic_list, list(zip(test_mic_loc, test_sound_data))))
-#     #     with self.assertRaises(ValueError):
-#     #         self.test_get_mic_match_with_sound_data(test_mic_loc_sound_data, test_mic_list)
+
+class GetMicSignalLocationCase(PrepareDataTestCase):
+    """
+    Test that the microphone signal arrays are not empty, contain none,
+    or any string values for both default and non-default cases.
+    """
+
+    def test_default_signal_not_numpy_array(self):
+        test_signal = 'ert'
+        with self.assertRaises(TypeError):
+            self.src_default._get_mic_signal_location(test_signal)
+
+    def test_default_signal_contains_none(self):
+        test_signal = np.array([np.array([5]), np.array([None]), np.array([3])])
+        with self.assertRaises(ValueError):
+            self.src_default._get_mic_signal_location(test_signal)
+
+    def test_default_signal_contains_empty_string(self):
+        test_signal = [np.array([5]), np.array([""]), np.array([3])]
+        test_numpy_signal = np.array(test_signal)
+        with self.assertRaises(ValueError):
+            self.src_default._get_mic_signal_location(test_numpy_signal)
+
+    def test_default_signal_empty(self):
+        test_signal = np.array([np.array([3, 4]), np.array([]), np.array([3])])
+        with self.assertRaises(ValueError):
+            self.src_default._get_mic_signal_location(test_signal)
+
+    def test_non_default_signal_not_numpy_array(self):
+        test_signal = 'wxdfbf'
+        with self.assertRaises(TypeError):
+            self.src_default._get_mic_signal_location(test_signal)
+
+    def test_non_default_signal_contains_none(self):
+        test_signal = np.array([np.array([5]), np.array([None]), np.array([3])])
+        with self.assertRaises(ValueError):
+            self.src_default._get_mic_signal_location(test_signal)
+
+    def test_non_default_signal_contains_empty_string(self):
+        test_signal = [np.array([5]), np.array([""]), np.array([3])]
+        test_numpy_signal = np.array(test_signal)
+        with self.assertRaises(ValueError):
+            self.src_default._get_mic_signal_location(test_numpy_signal)
+
+    def test_non_default_signal_empty(self):
+        test_signal = np.array([np.array([3, 4]), np.array([]), np.array([3])])
+        with self.assertRaises(ValueError):
+            self.src_default._get_mic_signal_location(test_signal)
+
 
 if __name__ == '__main__':
     unittest.main()

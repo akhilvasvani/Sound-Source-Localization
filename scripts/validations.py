@@ -135,12 +135,12 @@ def validate_signal_data(func):
         for sample_array in args[-1]:
             if not validate_instance_type(sample_array, np.ndarray):
                 raise TypeError("Error. Signal data is not a numpy array.")
-            if not sample_array.tolist() or (sample_array.size == 1 and None in sample_array.tolist()):
-                raise ValueError("Error. The signal is empty.")
             if None in sample_array.tolist():
-                raise ValueError('Error. The signal contains None.')
+                raise ValueError("Error. The signal contains None.")
             if "" in sample_array.tolist():
-                raise ValueError('Error. The signal contains an empty string.')
+                raise ValueError("Error. The signal contains an empty string.")
+            if not sample_array.tolist():
+                raise ValueError("Error. The signal is empty.")
         result = func(*args)
         return result
     return validated

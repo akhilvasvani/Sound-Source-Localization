@@ -15,7 +15,6 @@ from scripts.validations import validate_room_source_dim_and_mic_loc
 
 # TODO:
 #       5) Debug?
-#       6) Custom Microphone set up!
 
 
 class ExperimentalMicData(object):
@@ -53,10 +52,8 @@ class ExperimentalMicData(object):
 
     def set_room_dimensions(self):
         """Returns the numpy array of the room dimensions with the format:
-           Width, Depth, and Length.
-           Note: all the dimensions are measured in meters.
-           Default: Dimensions of Room (cm): [35, 22, 24]
-           room_dim = np.array([0.34925, 0.219964, 0.2413])
+           Width, Depth, and Length. Note: all the dimensions are measured
+           in centimeters.
         """
         return np.array(self.room_dim)
 
@@ -95,8 +92,9 @@ class ExperimentalMicData(object):
 
     def determine_angle_and_distance(self):
         """Finds the azimuth and colatitude angles in relation to the center of
-           the microphone array (centroid). In addition, determines the distance
-           between the centroid and the sound source. """
+           the microphone array (centroid). In addition, determines the
+           distance between the centroid and the sound source."""
+
         centroid = np.sum(self.R, axis=-1) / len(self.room_dim)
         self.dist = math.sqrt(sum([(a - b)**2 for a, b in zip(list(centroid), self.source_dim)]))
         difference = np.subtract(np.array(self.source_dim), centroid)
@@ -139,8 +137,10 @@ class ExperimentalMicData(object):
     def run(self, plot=False):
         """Sets the sound source and microphones. Records, and saves data
            into a mat file. Plots the microphones and sound source in a 3-d
-           plot if necessary. Reconverts microphone coordinates in terms of
-           center of the room."""
+           plot if necessary. Note: the microphone locations are recorded
+           under a new coordinate system in relation to the center of the room.
+
+           """
 
         fs, signal = self._read_wav_file()
 
@@ -160,12 +160,4 @@ class ExperimentalMicData(object):
         # Note: transposed microphone locations, so list is in x, y, z order
         reconverted_mic_locs = np.subtract(self.R.T, self.set_room_dimensions()/2).tolist()
 
-        return self.determine_angle_and_distance(), self.name_to_save_file, reconverted_mic_locs
-
-
-# CREATE A NEW FUNCTION FOR CUSTOM MIC SETUPS
-        # x_locations = self._microphone_locations[0]
-        # y_locations = self._microphone_locations[1]
-        # z_locations = self._microphone_locations[2]
-        #
-        # return [[x, y, z] for x in x_locations for y in y_locations for z in z_locations]
+        return self.determine_angle_and_distance(), self.name_to_save_file, reconverted_mic_locs, fs

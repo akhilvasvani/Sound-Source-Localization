@@ -1,15 +1,12 @@
 # !/usr/bin/env python
 """In this script, preprocess will extract the sound data ond locations into
-one list."""
+one dictionary."""
 
 import sys
 import pathlib
 import scipy.io as sio
 
 from scripts.validations import validate_file_path, validate_signal_data
-
-# TODO:
-#     2) Debug?
 
 
 class PrepareData(object):
@@ -42,15 +39,13 @@ class PrepareData(object):
     def _set_microphone_locations(self):
         """Returns microphone locations list. The x dimension,
            y dimension, and z dimension serve as optional input
-           arguments.
-
-           Example:
-               mic_list = set_microphone_locations(x_locations = [-0.102235, -0.052197, -0.027304],
-                                 y_locations = [-0.109982],
-                                 z_locations = [0.056388, 0.001524, -0.053340, -0.108204])
+           arguments. Note: For the default case, the microphone
+           locations are under a new coordinate system in relation
+           to the center of the room
+           (whose center = [(0.34925/2),(0.219964/2),(0.2413/2)] is the origin)
 
           Returns:
-              List of lists which has the coordinates
+              List of lists which contains the microphone coordinates
         """
 
         if self.default:
@@ -59,19 +54,28 @@ class PrepareData(object):
             y_locations = [-0.109982]
             z_locations = [0.056388, 0.001524, -0.053340, -0.108204]
 
-            # Return the microphone list
             return [[x, y, z] for x in x_locations for y in y_locations for z in z_locations]
 
         return [location for location in self._microphone_locations]
 
     def _read_mat_file(self, sample_filepath):
+        """Reads in the .mat file and check if the file does in fact exist.
+
+           Args:
+                sample_filepath: (string) name of file path
+
+           Returns:
+               dictionary of microphone locations and signal data
+
+            Raises:
+                FileNotFoundError: if .mat file cannot be found
+        """
+
         try:
             data = {key: value[0] for key, value in sio.loadmat(sample_filepath).items() if 'mic' in key}
             return self._get_mic_signal_location(list(data.values()))
 
         except OSError:
-            # Check if the file does in fact exist
-
             # Check if the python version is 3.6 or greater
             if sys.version_info[1] >= 6:
                 if pathlib.Path(sample_filepath).resolve(strict=True):
@@ -83,9 +87,9 @@ class PrepareData(object):
                 raise FileNotFoundError("Error. File not found.")
 
     def get_signal(self, name_of_source):
-        """Reads in the .mat file. However, if is_default is True,
-           returns the sound data depending on the specific sound source
-           and cycle number.
+        """Retrieves the signal data (sound data) from the .mat file. If
+           is_default is set to True, return the sound data depending on the
+           specific sound source and cycle number.
 
             Args:
                 name_of_source: (string) specifies each sound cycle
@@ -129,9 +133,7 @@ class PrepareData(object):
     @validate_signal_data
     def _get_mic_signal_location(self, data):
         """Returns for each of the n microphones, its locations and associated
-           signal. Note: The microphone locations are under a new coordinate
-           system in relation to the center of the box
-           (whose center = [(0.34925/2),(0.219964/2),(0.2413/2)] is the origin)
+           signal.
 
             Args:
                 data: (numpy array) the signal associated with each microphone
@@ -139,25 +141,7 @@ class PrepareData(object):
             Returns:
                 signal_list: (list) list of the associated signals
                 microphone locations: (list) list of the microphone locations
-
-            Raises:
-                 ValueError: The signal list associated with
-                             each microphone is empty
-                 ValueError: The signal list associated with
-                             each microphone contains None
-                 ValueError: The signal list associated with
-                             each microphone contains an empty string
-                 ValueError: The microphone list is empty
         """
-
-        # if not data.tolist() or (data.size == 1 and None in data.tolist()):
-        #     raise ValueError("Error. The signal is empty.")
-        #
-        # if None in data:
-        #     raise ValueError('Error. The signal contains None.')
-        #
-        # if "" in data.tolist():
-        #     raise ValueError('Error. The signal contains an empty string.')
 
         # Numbered 1 - 12
         all_microphone_locations = self._set_microphone_locations()
