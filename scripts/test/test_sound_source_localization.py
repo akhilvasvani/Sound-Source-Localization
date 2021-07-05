@@ -4,8 +4,7 @@ import numpy as np
 from scripts.sound_source_localization import SoundSourceLocation
 
 # TODO:
-#   1) Create class: GetEstimatesTestCase
-#   2) Debug 2 text cases in DifferenceOfArrivalsTestCase
+#   1) Test one Real case in DifferenceOfArrivalsTestCase
 
 
 class SoundSourceLocationTestCase(unittest.TestCase):
@@ -14,7 +13,7 @@ class SoundSourceLocationTestCase(unittest.TestCase):
         self.src = SoundSourceLocation(sample_filepath, sample_method)
 
         self.test_get_centroid = self.src.get_centroid
-        # self.test_get_sound_data = self.src.get_sound_data
+
         self.test_get_mic_match_with_sound_data = self.src.get_mic_match_with_sound_data
         self.test_difference_of_arrivals = self.src.get_difference_of_arrivals
         self.test_get_estimates = self.src.get_estimates
@@ -25,8 +24,6 @@ class SoundSourceLocationTestCase(unittest.TestCase):
         self.test_sound_data = np.array([[i, 2 * i + 1, i - 1] for i in range(3)])
 
         return list(zip(self.test_mic_loc, self.test_sound_data))
-        # self.test_mic_loc_and_sound_data = list(zip(self.test_mic_loc, self.test_sound_data))
-        # return self.test_mic_loc_and_sound_data
 
     def create_mic_loc_and_sound_data_dict(self):
         self.test_mic_list = ['mic1', 'mic2', 'mic3']
@@ -43,7 +40,7 @@ class InitTestCase(SoundSourceLocationTestCase):
         self.assertEqual(self.src.sound_speed, 30)
 
     def test_combinations_number(self):
-        self.assertEqual(self.src.combinations_number, 3)
+        self.assertEqual(self.src.mic_combinations_number, 3)
 
     def test_sampling_frequency(self):
         self.assertEqual(self.src.fs, 16000)
@@ -164,49 +161,52 @@ class GetMicMatchWithSoundDataTestCase(SoundSourceLocationTestCase):
         self.assertEqual(result_mic_loc_list, test_result_mic_loc_list)
 
 
-# # TODO: 2
-# class DifferenceOfArrivalsTestCase(SoundSourceLocationTestCase):
-#     """
-#     Test difference of arrival method
-#     """
-#     def test_signal_list_emtpy(self):
-#         test_signal_list = []
-#         test_mic_location = ([[0, 1, 2], [1, 2, 3], [2, 3, 4]],)
-#         with self.assertRaises(ValueError):
-#             self.test_difference_of_arrivals(test_signal_list, *test_mic_location)
-#
-#     def test_signal_list_None(self):
-#         test_signal_list = [None]
-#         test_mic_location = ([[0, 1, 2], [1, 2, 3], [2, 3, 4]],)
-#         with self.assertRaises(ValueError):
-#             self.test_difference_of_arrivals(test_signal_list, *test_mic_location)
-#
-#     def test_mic_list_emtpy(self):
-#         test_signal_list = [np.array([5]), np.array([6]), np.array([7])]
-#         test_mic_location = ([],)
-#         with self.assertRaises(ValueError):
-#             self.test_difference_of_arrivals(test_signal_list, *test_mic_location)
-#
-#     # TODO: Odd Test Case -- need rework
-#     def test_mic_list_none(self):
-#         test_signal_list = [np.array([5]), np.array([6]), np.array([7])]
-#         test_mic_location = ([[None, None, None]],)
-#         with self.assertRaises(ValueError):
-#             self.test_difference_of_arrivals(test_signal_list, *test_mic_location)
-#
-#     # TODO: Test for Real Case
-#     def test_difference_of_arrivals(self):
-#         test_signal_list = [np.array([i, 2 * i + 1, i - 1]) for i in range(3)]
-#         test_mic_location = ([[0, 1, 2], [1, 2, 3], [2, 3, 4]],)
-#
-#         self.test_difference_of_arrivals(test_signal_list, *test_mic_location)
+class DifferenceOfArrivalsTestCase(SoundSourceLocationTestCase):
+    """
+    Test difference of arrival method
+    """
+    def test_signal_list_empty(self):
+        test_signal_list = []
+        test_mic_location = ([[0, 1, 2], [1, 2, 3], [2, 3, 4]],)
+        with self.assertRaises(ValueError):
+            self.test_difference_of_arrivals(test_signal_list, *test_mic_location)
 
-#
-# # TODO: TEST THIS
-# class GetEstimatesTestCase(SoundSourceLocationTestCase):
-#     """
-#     Test get estimates
-#     """
+    def test_signal_list_small_with_none(self):
+        test_signal_list = [None]
+        test_mic_location = ([[0, 1, 2], [1, 2, 3], [2, 3, 4]],)
+        with self.assertRaises(ValueError):
+            self.test_difference_of_arrivals(test_signal_list, *test_mic_location)
+
+    def test_signal_list_large_with_None(self):
+        test_signal_list = [np.array([5]), [None], np.array([10])]
+        test_mic_location = ([[0, 1, 2], [1, 2, 3], [2, 3, 4]],)
+        with self.assertRaises(ValueError):
+            self.test_difference_of_arrivals(test_signal_list, *test_mic_location)
+
+    def test_mic_list_empty(self):
+        test_signal_list = [np.array([5]), np.array([6]), np.array([7])]
+        test_mic_location = ([],)
+        with self.assertRaises(ValueError):
+            self.test_difference_of_arrivals(test_signal_list, *test_mic_location)
+
+    def test_mic_list_none(self):
+        test_signal_list = [np.array([5]), np.array([6]), np.array([7])]
+        test_mic_location = ([[None, None, None]],)
+        with self.assertRaises(ValueError):
+            self.test_difference_of_arrivals(test_signal_list, *test_mic_location)
+
+    def test_mic_list_large_with_none(self):
+        test_signal_list = [np.array([5]), np.array([6]), np.array([7])]
+        test_mic_location = ([[3, 9, 10], [None, 5, 4.0]],)
+        with self.assertRaises(ValueError):
+            self.test_difference_of_arrivals(test_signal_list, *test_mic_location)
+
+    # # TODO: Test for Real Case
+    # def test_difference_of_arrivals(self):
+    #     test_signal_list = [np.array([i, 2 * i + 1, i - 1]) for i in range(3)]
+    #     test_mic_location = ([[0, 1, 2], [1, 2, 3], [2, 3, 4]],)
+    #
+    #     self.test_difference_of_arrivals(test_signal_list, *test_mic_location)
 
 
 if __name__ == '__main__':

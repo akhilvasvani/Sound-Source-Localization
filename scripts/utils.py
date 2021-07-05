@@ -7,12 +7,12 @@ import multiprocessing
 
 class MultiProcessingWithReturnValue(object):
     def __init__(self, func, *args):
-        """Define the function and function arguments to be multi-processed"""
+        """Define the function and function arguments to be multi-processed."""
         self.func = func
         self.args = args
 
     def run(self, *args):
-        """Run the function, with its correct function arguments"""
+        """Run the function, with its correct function arguments."""
         return self.func(args[0][0], *args[0][1])
 
     def pooled(self):
@@ -21,4 +21,3 @@ class MultiProcessingWithReturnValue(object):
         with multiprocessing.Pool() as pool:
             *a, = pool.map(self.run, self.args)
         return a
-

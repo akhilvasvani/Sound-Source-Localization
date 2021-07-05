@@ -9,7 +9,8 @@ from itertools import combinations
 
 from scripts.utils import MultiProcessingWithReturnValue
 from scripts.validations import validate_difference_of_arrivals, \
-    ValidateCentroid, validate_get_mic_with_sound_data, validate_splits
+    ValidateCentroid, validate_get_mic_with_sound_data, validate_splits,\
+    validate_instance_type
 
 
 # TODO:
@@ -20,10 +21,7 @@ from scripts.validations import validate_difference_of_arrivals, \
 #       github page recommended to not use np.linspace(-90, 0, 90) -- or something like?--
 #       for the colatitude and azimuth angle range because the outputted angles (i.e. recon_azimuth)
 #       will be closer to the poles? Need to read-up on this more.
-#    3) In the method, get_estimates, need to add a wrapper (decorator) to test the validations
-#       elsewhere.
-#    4) Process_potential_estimates method has 3 issues:
-#           b) Test Multi-processing class
+
 
 class SoundSourceLocation(object):
     """SoundSourceLocation finds the potential location points of a
@@ -149,8 +147,6 @@ class SoundSourceLocation(object):
                  doa.colatitude_recon: (float) Co-latitude angle
         """
 
-        # print(*mic_location)
-
         # Add n-microphone array in [x,y,z] order
         m = np.vstack(list(zip(*mic_location)))
 
@@ -194,7 +190,7 @@ class SoundSourceLocation(object):
                 TypeError: Cartesian array is not a numpy array
             """
 
-        if not isinstance(cartesian_arr, np.ndarray):
+        if not validate_instance_type(cartesian_arr, np.ndarray):
             raise TypeError("Error. Cartesian array is not a numpy array")
 
         # Split up the array into the separate parts based on how many sources there are
@@ -207,7 +203,6 @@ class SoundSourceLocation(object):
         return np.vstack(array_split)
 
     def get_estimates(self, sound_data, *mic_split):
-        # TODO: Create a wrapper to handle the error cases
         """Returns the numpy array of location estimates for each microphone
            combination pairing and associated sound data. First, the signal
            and microphone locations are acquired. Next the centroid is gathered.
@@ -221,23 +216,7 @@ class SoundSourceLocation(object):
 
             Returns:
                 (numpy array) Array of the estimates
-
-            Raises:
-                ValueError: Sound data is empty
-                ValueError: None in sound data
         """
-        # TODO: Error handle empty cases...
-        # if not sound_data.tolist():
-        #     raise ValueError('Error. Sound data list is empty.')
-        #
-        # if None in sound_data:
-        #     raise ValueError('Error. None in sound data list.')
-
-        if not mic_split:
-            raise ValueError('Error. Mic split list is empty.')
-
-        if None in mic_split:
-            raise ValueError('Error. None in mic split list is empty.')
 
         signal, mic_locations = self.get_mic_match_with_sound_data(sound_data,
                                                                    *mic_split)
@@ -254,9 +233,6 @@ class SoundSourceLocation(object):
         return self.radius * cartesian_coordinates.T + np.array(centroid)[np.newaxis, :]
 
     def process_potential_estimates(self, all_sound_data):
-        # TODO:
-        #  2) Debug Multi-processing
-
         """Returns all the estimates for all the microphone combinations
            and re-centers according to the room dimension specifications.
            Microphone combinations are split up into equal chunks and

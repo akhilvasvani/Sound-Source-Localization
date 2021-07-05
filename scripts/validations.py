@@ -8,8 +8,6 @@ import numpy as np
 
 # TODO:
 #  1) Clean up repeatedly used functions. Why can't class decorators inherit from other decorators?
-#  2) The main test classes are: signal data list, microphone location list. We should all the other decorators
-#     add onto these initial decorators.
 
 
 class ValidateList(object):
@@ -169,11 +167,12 @@ class ValidateCentroid(object):
             raise ValueError('Error. Microphone location list contains None.')
 
         if not check_list_of_lists_are_same_length(*args):
-            raise ValueError('Error. Not all microphone locations have same length!')
+            raise ValueError('Error. Not all microphone locations have '
+                             'same length!')
 
         if not all([isinstance(mic_loc, float) for mic_loc in convert_to_one_list(*args)]):
             raise TypeError('Error. Microphone location list '
-                             'does not contain a float type.')
+                            'does not contain a float type.')
         return self.func(*args, **kwargs)
 
 
@@ -203,17 +202,12 @@ def validate_difference_of_arrivals(func):
 
         if validate_empty_list(signal_list):
             raise ValueError('Error. Signal list is empty.')
-        if np.array(signal_list).shape[0] == 1 and None in signal_list:
+        if None in signal_list or convert_to_one_list(signal_list):
             raise ValueError('Error. None in signal list.')
         if validate_empty_list(mic_location):
             raise ValueError('Error. Microphone location list is empty.')
-        if None in mic_location:
+        if None in mic_location or convert_to_one_list(mic_location):
             raise ValueError('Error. None in microphone location list.')
-        # if any([True for mic in mic_location if None in mic]):
-        #     raise ValueError('Error. None in microphone location list.')
-        # This works for lists of lists, but not for single list
-        if any([True for signal in signal_list if None in signal]):
-            raise ValueError('Error. None in signal list.')
         result = func(*args)
         return result
     return validated

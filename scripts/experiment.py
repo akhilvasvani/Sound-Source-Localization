@@ -1,8 +1,10 @@
 # !/usr/bin/env python
 """In this script, experiment will use the pyroomacoustics library to
-create the mat file to be used in sound_source_localization"""
+convert a wav file to a mat file to be used in sound_source_localization."""
 
 import math
+import pathlib
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -11,10 +13,8 @@ from mpl_toolkits.mplot3d import Axes3D
 
 import pyroomacoustics as pra
 
-from scripts.validations import validate_room_source_dim_and_mic_loc
-
-# TODO:
-#       5) Debug?
+from scripts.validations import validate_room_source_dim_and_mic_loc, \
+    validate_file_path
 
 
 class ExperimentalMicData(object):
@@ -28,11 +28,12 @@ class ExperimentalMicData(object):
                       microphone locations
     """
 
+    @validate_file_path
     @validate_room_source_dim_and_mic_loc
     def __init__(self, filename, number_of_mics=4, **kwargs):
         """Initializes ExperimentalMicData with filename, number_of_mics, and
            **kwargs."""
-        self.filename = None or filename
+        self.filename = filename
         self.number_of_mics = number_of_mics
 
         *self.room_dim, = iter(kwargs.get('room_dim'))
@@ -47,8 +48,28 @@ class ExperimentalMicData(object):
         self.output_file_name = None
 
     def _read_wav_file(self):
-        fs, signal = wavfile.read(self.filename)
-        return fs, signal
+        """Reads in the .wav file and check if the file does in fact exist.
+
+           Returns:
+               fs: (integer) sampling frequency
+               signal: (numpy array) signal data
+
+            Raises:
+                FileNotFoundError: if .mat file cannot be found
+        """
+        try:
+            fs, signal = wavfile.read(self.filename)
+            return fs, signal
+        except OSError:
+            # Check if the python version is 3.6 or greater
+            if sys.version_info[1] >= 6:
+                if pathlib.Path(self.filename).resolve(strict=True):
+                    pass
+                raise FileNotFoundError("Error. File not found.")
+            else:
+                if pathlib.Path(self.filename).resolve():
+                    pass
+                raise FileNotFoundError("Error. File not found.")
 
     def set_room_dimensions(self):
         """Returns the numpy array of the room dimensions with the format:

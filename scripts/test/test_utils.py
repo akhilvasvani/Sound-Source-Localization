@@ -1,10 +1,42 @@
 import unittest
+import numpy as np
 
 from scripts.validations import convert_to_one_list, \
     check_list_of_lists_are_same_length
 
+from scripts.utils import MultiProcessingWithReturnValue
 
-# TODO: Test Mult-processing
+
+def target_function(sample_name, *args):
+    """Test Function. Outside the class because multiprocessing class
+       cannot inherit nested functions."""
+    return sample_name, np.add(*args)
+
+class MultiProcessingWithReturnValueTestCase(unittest.TestCase):
+    """
+    Test that a Multiprocess can return a value
+    """
+
+    def test_process_returns_value(self):
+
+        test_mic_loc = [[i, i + 1, i + 2] for i in range(3)]
+        test_sound_data = np.array([[i, 2 * i + 1, i - 1] for i in range(3)])
+        test_mic_list = ['mic'+str(i+1) for i in range(3)]
+
+        test_mic_loc_and_sound_data = list(zip(test_mic_loc, test_sound_data))
+
+        test_mic_loc_and_sound_data_dict = zip(test_mic_list, test_mic_loc_and_sound_data)
+
+        test_sam = MultiProcessingWithReturnValue(target_function,
+                                                  *test_mic_loc_and_sound_data_dict).pooled()
+
+        result = [('mic1', np.array([0, 2, 1])),
+                  ('mic2', np.array([2, 5, 3])),
+                  ('mic3', np.array([4, 8, 5]))]
+
+        self.assertEqual([a[0] for a in test_sam], [b[0] for b in result])
+        self.assertTrue(np.allclose([a[1] for a in test_sam], [b[1] for b in result]))
+
 
 class ConvertToOneListTestCase(unittest.TestCase):
     """
