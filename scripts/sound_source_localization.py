@@ -221,6 +221,7 @@ class SoundSourceLocation(object):
         signal, mic_locations = self.get_mic_match_with_sound_data(sound_data,
                                                                    *mic_split)
         centroid = self.get_centroid(mic_locations)
+        print(signal)
         azimuth_recon, colatitude_recon = self.get_difference_of_arrivals(signal,
                                                                       mic_locations)
 

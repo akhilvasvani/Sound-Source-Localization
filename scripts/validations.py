@@ -202,11 +202,14 @@ def validate_difference_of_arrivals(func):
 
         if validate_empty_list(signal_list):
             raise ValueError('Error. Signal list is empty.')
-        if None in signal_list or convert_to_one_list(signal_list):
+
+        # Check for signal lists with 1 element (None in them) or
+        # iterate through a list looking for None
+        if (np.array(signal_list).shape[0] == 1 and None in signal_list) or any([True for signal in signal_list if None in signal]):
             raise ValueError('Error. None in signal list.')
         if validate_empty_list(mic_location):
             raise ValueError('Error. Microphone location list is empty.')
-        if None in mic_location or convert_to_one_list(mic_location):
+        if None in mic_location or None in convert_to_one_list(mic_location):
             raise ValueError('Error. None in microphone location list.')
         result = func(*args)
         return result
