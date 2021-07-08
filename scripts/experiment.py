@@ -178,7 +178,9 @@ class ExperimentalMicData(object):
 
         self._save_file(test_dict)
 
-        # Note: transposed microphone locations, so list is in x, y, z order
-        reconverted_mic_locs = np.subtract(self.R.T, self.set_room_dimensions()/2).tolist()
+        print(self.R.T)
 
-        return self.determine_angle_and_distance(), self.name_to_save_file, reconverted_mic_locs, fs
+        # Note: transposed microphone locations, so list is in x, y, z order
+        converted_mic_locs = np.subtract(self.R.T, self.set_room_dimensions()/2).tolist()
+
+        return self.determine_angle_and_distance(), self.name_to_save_file, converted_mic_locs, fs

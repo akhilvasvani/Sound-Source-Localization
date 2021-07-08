@@ -36,7 +36,7 @@ class PrepareData(object):
 
         self._microphone_locations = args or None
 
-    def _set_microphone_locations(self):
+    def set_microphone_locations(self):
         """Returns microphone locations list. The x dimension,
            y dimension, and z dimension serve as optional input
            arguments. Note: For the default case, the microphone
@@ -144,7 +144,7 @@ class PrepareData(object):
         """
 
         # Numbered 1 - 12
-        all_microphone_locations = self._set_microphone_locations()
+        all_microphone_locations = self.set_microphone_locations()
 
         if len(all_microphone_locations) == len(data):
 

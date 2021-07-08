@@ -17,10 +17,6 @@ from scripts.validations import validate_difference_of_arrivals, \
 #    1) Determine how to use the "new" updated transform attribute in method,
 #       get_difference_of_arrivals--i.e. will the deprecated version impact
 #       the desired result?
-#    2) Also in the get_difference_of_arrivals function, a post on the pyroomacoustics issue
-#       github page recommended to not use np.linspace(-90, 0, 90) -- or something like?--
-#       for the colatitude and azimuth angle range because the outputted angles (i.e. recon_azimuth)
-#       will be closer to the poles? Need to read-up on this more.
 
 
 class SoundSourceLocation(object):
@@ -159,15 +155,13 @@ class SoundSourceLocation(object):
             x = np.array([pra.transform.stft.analysis(signal, self.fft_size,
                                                       self.fft_size // 2).T for signal in signal_list])
 
-        # TODO: for azimuth and colatitude, np.linspace might not be optimal
         # Construct the new DOA object
         doa = pra.doa.algorithms.get(self.algo_name)(L=m, fs=self.fs,
                                                      nfft=self.fft_size,
                                                      c=self.sound_speed,
                                                      num_src=self.num_sources,
                                                      max_four=4, dim=3,
-                                                     azimuth=np.linspace(-180., 180., 360) * np.pi / 180,
-                                                     colatitude=np.linspace(-90., 90., 180) * np.pi / 180)
+                                                     n_grid=1000)
 
         doa.locate_sources(x, freq_range=self.freq_range)
 
@@ -221,7 +215,6 @@ class SoundSourceLocation(object):
         signal, mic_locations = self.get_mic_match_with_sound_data(sound_data,
                                                                    *mic_split)
         centroid = self.get_centroid(mic_locations)
-        print(signal)
         azimuth_recon, colatitude_recon = self.get_difference_of_arrivals(signal,
                                                                       mic_locations)
 
@@ -293,11 +286,3 @@ class SoundSourceLocation(object):
 
         mic_info = args[0]
         yield self.process_potential_estimates(mic_info)
-
-
-# method_name = 'SRP'
-# test_signal_list = [np.array([i, 2 * i + 1, i - 1]) for i in range(3)]
-# test_mic_location = ([[0, 1, 2], [1, 2, 3], [2, 3, 4]],)
-#
-# b = SoundSourceLocation(method_name).get_difference_of_arrivals(test_signal_list, *test_mic_location)
-# print(b)
