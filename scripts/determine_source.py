@@ -14,6 +14,8 @@ from scripts.sound_source_localization import SoundSourceLocation
 #   2) Determine default v/s non-default use cases
 #   3) Documentation
 #   4) Debug? -- something odd with the way the microphones are appearing on the graph
+#   Note: The frequency is off, the microphone configuration is off too..
+#         need to fix that as well
 
 
 class DetermineSourceLocation(SoundSourceLocation):
