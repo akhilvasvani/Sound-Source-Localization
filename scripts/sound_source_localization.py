@@ -45,7 +45,9 @@ class SoundSourceLocation(object):
         y_dim_max: (float) the maximum y length (in meters) -- ex. height
         z_dim_max: (float) the maximum z length (in meters) -- ex. depth
         transform: (boolean) DEBUG -- figure out whether to use the new version
-           or the deprecated version
+                    or the deprecated version
+        default: (boolean) Used for my original project purpose.
+                 Default: False
     """
 
     def __init__(self, algo_name, num_sources=1, number_of_mic_splits=5,
