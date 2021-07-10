@@ -9,7 +9,7 @@ import scipy.io as sio
 from scripts.validations import validate_file_path, validate_signal_data
 
 
-class PrepareData(object):
+class PrepareData:
     """PrepareData extracts the sound data from the .mat file and lines up
        the sound data (the signals) with the corresponding microphone and
        the microphone's location.
@@ -21,7 +21,7 @@ class PrepareData(object):
             s1_bool: (boolean) specifies whether to look for S1 or S2
                      sound source. Default: True
             default: (boolean) Used for my original project purpose.
-                     Default: True
+                     Default: False
     """
 
     @validate_file_path
@@ -54,9 +54,10 @@ class PrepareData(object):
             y_locations = [-0.109982]
             z_locations = [0.056388, 0.001524, -0.053340, -0.108204]
 
-            return [[x, y, z] for x in x_locations for y in y_locations for z in z_locations]
+            return [[x, y, z] for x in x_locations
+                    for y in y_locations for z in z_locations]
 
-        return [location for location in self._microphone_locations]
+        return list(self._microphone_locations)
 
     def _read_mat_file(self, sample_filepath):
         """Reads in the .mat file and check if the file does in fact exist.
@@ -72,7 +73,8 @@ class PrepareData(object):
         """
 
         try:
-            data = {key: value[0] for key, value in sio.loadmat(sample_filepath).items() if 'mic' in key}
+            data = {key: value[0] for key, value in
+                    sio.loadmat(sample_filepath).items() if 'mic' in key}
             return self._get_mic_signal_location(list(data.values()))
 
         except OSError:
@@ -80,11 +82,10 @@ class PrepareData(object):
             if sys.version_info[1] >= 6:
                 if pathlib.Path(sample_filepath).resolve(strict=True):
                     pass
-                raise FileNotFoundError("Error. File not found.")
-            else:
-                if pathlib.Path(sample_filepath).resolve():
-                    pass
-                raise FileNotFoundError("Error. File not found.")
+                raise FileNotFoundError("Error. File not found.") from None
+            if pathlib.Path(sample_filepath).resolve():
+                pass
+            raise FileNotFoundError("Error. File not found.") from None
 
     def get_signal(self, name_of_source):
         """Retrieves the signal data (sound data) from the .mat file. If
@@ -112,8 +113,8 @@ class PrepareData(object):
             # Recovered S1 and S2 (top),
             # Regular S1 and S1 (bottom)
             if self.recovered:
-                source_name_dict = {f'S{x}_Cycle{y}': [f'Recovered_S{x}/S{x}_Cycle{y}',
-                                                       f'S{x}'] for x in range(1, 3) for y in range(24)}
+                source_name_dict = {f'S{x}_Cycle{y}': [f'Recovered_S{x}/S{x}_Cycle{y}', f'S{x}']
+                                    for x in range(1, 3) for y in range(24)}
             else:
                 source_name_dict = {f'S{x}_Cycle{y}': [f'S{x}/S{x}_Cycle{y}', f'S{x}']
                                     for x in range(1, 3) for y in range(24)}
@@ -123,12 +124,14 @@ class PrepareData(object):
 
             # Match the correct data with the name
             full_data_file_path = "".join([self.filepath,
-                                           source_name_dict.get(name_of_source)[0], ".mat"])
+                                           source_name_dict.get(name_of_source)[0],
+                                           ".mat"])
 
             data = sio.loadmat(full_data_file_path)
             return data.get(source_name_dict.get(name_of_source)[1])
 
-        return is_default(self) if self.default and name_of_source else self._read_mat_file(self.filepath)
+        return is_default(self) if self.default and name_of_source \
+            else self._read_mat_file(self.filepath)
 
     @validate_signal_data
     def _get_mic_signal_location(self, data):
@@ -143,27 +146,27 @@ class PrepareData(object):
                 microphone locations: (list) list of the microphone locations
         """
 
-        # Numbered 1 - 12
         all_microphone_locations = self.set_microphone_locations()
 
         if len(all_microphone_locations) == len(data):
 
             # Each microphone location MUST match the corresponding microphone data
-            all_microphone_locations_and_data = list(zip(all_microphone_locations,
-                                                         (row for row in data)))
+            all_mic_loc_and_data = list(zip(all_microphone_locations,
+                                            (row for row in data)))
 
             # Dictionary of the microphone locations and their respective signals
             # The key is the specific microphone, and the value is a list--
             # the first is the microphone location, followed by the signal.
             # Note: order is mic number (from 1 -12), followed by
             # location of channel (to get actual signal)
-            microphones_locations_and_signals_dict = {"".join(['mic', str(j+1)]): all_microphone_locations_and_data[j]
-                                                      for j in range(len(all_microphone_locations_and_data))}
+            microphones_locations_and_signals_dict = {"".join(['mic',
+                                                               str(j+1)]): all_mic_loc_and_data[j]
+                                                      for j in range(len(all_mic_loc_and_data))}
 
             return microphones_locations_and_signals_dict
 
-        return f"Error. Mismatch in length of microphone location list " \
-               f"and length of signal list."
+        return "Error. Mismatch in length of microphone location list " \
+               "and length of signal list."
 
     def load_file(self):
         """Loads in .mat file. Otherwise yield a list-- microphones, signals,

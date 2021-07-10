@@ -5,9 +5,17 @@ for the sound source localization script."""
 import multiprocessing
 
 
-class MultiProcessingWithReturnValue(object):
+class MultiProcessingWithReturnValue:
+    """MultiProcessingWithReturnValue receives a function and its corresponding
+       arguments, as in input, and runs the function on multiple cores.
+       Each output is saved into a list and returned.
+
+       Attributes:
+           func: the function to run
+           args: the function's arguments
+    """
     def __init__(self, func, *args):
-        """Define the function and function arguments to be multi-processed."""
+        """Initializes MultiProcessingWithReturnValue with func and *args."""
         self.func = func
         self.args = args
 
@@ -19,5 +27,5 @@ class MultiProcessingWithReturnValue(object):
         """Multi-process the function"""
 
         with multiprocessing.Pool() as pool:
-            *a, = pool.map(self.run, self.args)
-        return a
+            *sample_output, = pool.map(self.run, self.args)
+        return sample_output

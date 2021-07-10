@@ -10,7 +10,7 @@ import numpy as np
 #  1) Clean up repeatedly used functions. Why can't class decorators inherit from other decorators?
 
 
-class ValidateList(object):
+class ValidateList:
     """Class decorator which checks the list type
        and if the list is None.
 
@@ -144,7 +144,7 @@ def validate_signal_data(func):
     return validated
 
 
-class ValidateCentroid(object):
+class ValidateCentroid:
     """Class decorator which checks if the microphone location list is empty,
        if it contains None, if not all the microphones in list are the
        same length type, or if microphone is not a float.

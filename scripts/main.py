@@ -37,11 +37,11 @@ def main(experi=True):
         microphone_location = [15 / 100, 0 / 100, 3 / 100]
         source_location = [2.5 / 100, 4.5 / 100, 7.8 / 100]
 
-        distance, *true_angles, output_file_name, converted_mic_locs, sample_rate = ExperimentalMicData(sample_filename,
-                                                                       room_dim=room_dimensions,
-                                                                       source_dim=source_location,
-                                                                       mic_location=microphone_location).run(plot=True)
-        test_data = PrepareData(output_file_name, *converted_mic_locs).load_file()
+        distance, *true_angles, output_file_name, converted_mic_locations, sample_rate = ExperimentalMicData(sample_filename,
+                                          room_dim=room_dimensions,
+                                          source_dim=source_location,
+                                          mic_location=microphone_location).run(plot=True)
+        test_data = PrepareData(output_file_name, *converted_mic_locations).load_file()
         sample_mic_signal_loc_dict = next(test_data)
         source_estimates = SoundSourceLocation(method_name,
                                                number_of_mic_splits=3,
@@ -50,8 +50,8 @@ def main(experi=True):
                                                y_dim_max=room_dimensions[1],
                                                z_dim_max=room_dimensions[2]).run(sample_mic_signal_loc_dict)
         ts1 = DetermineSourceLocation(method_name, tail, *source_estimates,
-                                      *converted_mic_locs,
-                                      room_dim=room_dimensions).run()
+                                      *converted_mic_locations,
+                                      room_dim=room_dimensions).sprint()
 
 
 if __name__ == '__main__':

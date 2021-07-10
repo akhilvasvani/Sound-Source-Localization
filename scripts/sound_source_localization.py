@@ -2,10 +2,10 @@
 """In this script, run_sound_source will find the all potential candidates for
 where the sound source is located."""
 
+from itertools import combinations
+
 import numpy as np
 import pyroomacoustics as pra
-
-from itertools import combinations
 
 from scripts.utils import MultiProcessingWithReturnValue
 from scripts.validations import validate_difference_of_arrivals, \
@@ -19,7 +19,7 @@ from scripts.validations import validate_difference_of_arrivals, \
 #       the desired result?
 
 
-class SoundSourceLocation(object):
+class SoundSourceLocation:
     """SoundSourceLocation finds the potential location points of a
        sound source using a distance of arrival (DOA) method via a
        combination of microphone pairings.
@@ -32,18 +32,23 @@ class SoundSourceLocation(object):
         sound_speed: (float) specific speed of sound
         mic_combinations_number: (integer) number of microphone to use
 
-        fs: (integer) specific sampling frequency. Default is 16000
+        sampling_rate: (integer) specific sampling frequency.
+                       Default is 16000 Hz
         fft_size: (integer) specific FFT size. Default is 256
         freq_range: (list) specific frequency range to isolate for.
-                    Default range is 0 - 256
+                    Default range is 0 - 256 Hz
         tol: (float) specific tolerance to use for distance between
              each point in the radius
         radius: (numpy array) values for radius
 
-        s1_bool: (boolean) indicates whether to find S1 or S2 sound source
-        x_dim_max: (float) the maximum x length (in meters) - ex. width
-        y_dim_max: (float) the maximum y length (in meters) -- ex. height
-        z_dim_max: (float) the maximum z length (in meters) -- ex. depth
+        s1_bool: (boolean) indicates whether to find S1 or S2 sound source.
+                  Default is True
+        x_dim_max: (float) the maximum x dimension (in centimeters)
+                   -- ex. width
+        y_dim_max: (float) the maximum y dimension (in centimeters)
+                   -- ex. depth
+        z_dim_max: (float) the maximum z dimension (in centimeters)
+                   -- ex. height
         transform: (boolean) DEBUG -- figure out whether to use the new version
                     or the deprecated version
         default: (boolean) Used for my original project purpose.
@@ -52,7 +57,8 @@ class SoundSourceLocation(object):
 
     def __init__(self, algo_name, num_sources=1, number_of_mic_splits=5,
                  sampling_rate=16000, s1_bool=True, x_dim_max=0.34925,
-                 y_dim_max=0.219964, z_dim_max=0.2413, transform=False, default=False):
+                 y_dim_max=0.219964, z_dim_max=0.2413, transform=False,
+                 default=False):
         """Initializes SoundSourceLocation with algo_name, num_sources."""
 
         self.algo_name = algo_name
@@ -63,7 +69,7 @@ class SoundSourceLocation(object):
         self.sound_speed = 30
         self.mic_combinations_number = 3
 
-        self.fs = sampling_rate
+        self.sampling_rate = sampling_rate
         self.fft_size = 256
         self.freq_range = [0, 250]
         self.tol = 1e-3  # 3e-3
@@ -146,26 +152,32 @@ class SoundSourceLocation(object):
         """
 
         # Add n-microphone array in [x,y,z] order
-        m = np.vstack(list(zip(*mic_location)))
+        microphones = np.vstack(list(zip(*mic_location)))
 
         # TODO: Figure out this deprecation
         # Create an array of a short fourier transformed frequency signal
         if self.transform:
-            x = np.array([pra.stft(signal, self.fft_size, self.fft_size // 2,
-                                   transform=np.fft.rfft).T for signal in signal_list])
+            stft_signal = np.array([pra.stft(signal,
+                                             self.fft_size,
+                                             self.fft_size // 2,
+                                             transform=np.fft.rfft).T
+                                    for signal in signal_list])
         else:
-            x = np.array([pra.transform.stft.analysis(signal, self.fft_size,
-                                                      self.fft_size // 2).T for signal in signal_list])
+            stft_signal = np.array([pra.transform.stft.analysis(signal,
+                                                                self.fft_size,
+                                                                self.fft_size // 2).T
+                                    for signal in signal_list])
 
         # Construct the new DOA object
-        doa = pra.doa.algorithms.get(self.algo_name)(L=m, fs=self.fs,
+        doa = pra.doa.algorithms.get(self.algo_name)(L=microphones,
+                                                     fs=self.sampling_rate,
                                                      nfft=self.fft_size,
                                                      c=self.sound_speed,
                                                      num_src=self.num_sources,
                                                      max_four=4, dim=3,
-                                                     n_grid=1000)
+                                                     n_grid=2000)
 
-        doa.locate_sources(x, freq_range=self.freq_range)
+        doa.locate_sources(stft_signal, freq_range=self.freq_range)
 
         return doa.azimuth_recon, doa.colatitude_recon
 
@@ -189,10 +201,12 @@ class SoundSourceLocation(object):
         if not validate_instance_type(cartesian_arr, np.ndarray):
             raise TypeError("Error. Cartesian array is not a numpy array")
 
-        # Split up the array into the separate parts based on how many sources there are
+        # Split up the array into the separate parts based on
+        # how many sources there are
         array_split = np.vsplit(cartesian_arr.T, self.num_sources)
 
-        # Multiply each respective part by the radius and recenter it with the centroid
+        # Multiply each respective part by the radius and recenter it
+        # with the centroid
         for i in range(self.num_sources):
             array_split[i] = self.radius * array_split[i] + np.array(the_centroid)[np.newaxis, :]
 
@@ -218,7 +232,7 @@ class SoundSourceLocation(object):
                                                                    *mic_split)
         centroid = self.get_centroid(mic_locations)
         azimuth_recon, colatitude_recon = self.get_difference_of_arrivals(signal,
-                                                                      mic_locations)
+                                                                          mic_locations)
 
         cartesian_coordinates = np.array([np.cos(azimuth_recon)*np.sin(colatitude_recon),
                                           np.sin(azimuth_recon)*np.sin(colatitude_recon),
@@ -254,21 +268,22 @@ class SoundSourceLocation(object):
                 # (where P and A are located)
                 mics = ["".join(['mic', str(i)]) for i in [1, 2, 5, 6, 9, 10]]
         else:
-            # microphone locations?
-            mics = ["".join(['mic', str(i+1)]) for i in range(len(list(all_sound_data.keys())))]
+            mics = ["".join(['mic', str(i+1)])
+                    for i in range(len(list(all_sound_data.keys())))]
 
-        mic_list = list(combinations(mics, self.mic_combinations_number))
+        mic_list_comb = list(combinations(mics, self.mic_combinations_number))
 
-        splits = validate_splits(len(mic_list) // self.number_of_mic_splits)
+        splits = validate_splits(len(mic_list_comb) // self.number_of_mic_splits)
 
         # Split up the mic list into chunks of the same size
-        mic_split_list = [mic_list[i * splits:(i+1) * splits]
-                          for i in range((len(mic_list)+splits-1) // splits)]
+        mic_split_list = [mic_list_comb[i * splits:(i+1) * splits]
+                          for i in range((len(mic_list_comb)+splits-1) // splits)]
 
-        sound_data_and_mic_split_combinations = ((all_sound_data,
-                             mic_split_list[i][j]) for j in range(splits) for i in range(self.number_of_mic_splits))
+        sound_data_and_each_mic_split = ((all_sound_data, mic_split_list[i][j])
+                                         for j in range(splits)
+                                         for i in range(self.number_of_mic_splits))
         all_estimates = np.array(MultiProcessingWithReturnValue(self.get_estimates,
-                                                                *sound_data_and_mic_split_combinations).pooled())
+                                                                *sound_data_and_each_mic_split).pooled())
 
         # Reshape them to (_, 3) which is proper format
         potential_sources = np.reshape(all_estimates,
