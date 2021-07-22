@@ -15,6 +15,7 @@ import pyroomacoustics as pra
 
 from scripts.validations import validate_room_source_dim_and_mic_loc, \
     validate_file_path
+from scripts.utils import CustomMicrophoneSetUp
 
 
 class ExperimentalMicData:
@@ -30,7 +31,8 @@ class ExperimentalMicData:
 
     @validate_file_path
     @validate_room_source_dim_and_mic_loc
-    def __init__(self, filename, number_of_mics=4, **kwargs):
+    def __init__(self, filename, number_of_mics=4, custom_mic_setup=None,
+                 **kwargs):
         """Initializes ExperimentalMicData with filename, number_of_mics, and
            **kwargs."""
         self.filename = filename
@@ -40,9 +42,23 @@ class ExperimentalMicData:
         *self.source_dim, = iter(kwargs.get('source_dim'))
         *self.microphone_location, = iter(kwargs.get('mic_location'))
 
+        self.custom_mic_setup = custom_mic_setup
+        if self.custom_mic_setup is not None:
+            custom_mic_kwargs = {k: v for k, v in kwargs.items() if k not in ['room_dim',
+                                                                              'source_dim',
+                                                                              'mic_location']}
+            self.mics = CustomMicrophoneSetUp(self.custom_mic_setup,
+                                              self.microphone_location,
+                                              self.number_of_mics,
+                                              len(self.room_dim),
+                                              **custom_mic_kwargs).run()
+            if self.custom_mic_setup == 'square':
+                self.number_of_mics *= kwargs.get('n')
+        else:
+            self.mics = self.microphone_location
+
         self.room = None
-        self.microphone_location_to_use = 0
-        self.microphones = 0
+
         self.dist = 0
         self.true_azimuth, self.true_colatitude = 0, 0
 
@@ -97,22 +113,7 @@ class ExperimentalMicData:
             Raises:
                 ValueError: if the microphone location is empty.
         """
-
-        # Create a linear array with 4 microphones
-        # with angle 0 degrees and inter mic distance 10 cm
-        if len(self.room_dim) == 3:  # 3-D
-            self.microphone_location_to_use = self.microphone_location[:-1]
-            self.microphones = pra.linear_2D_array(self.microphone_location_to_use,
-                                                   self.number_of_mics, 0, 0.1)
-            self.microphones = np.array(list(self.microphones) + [np.zeros(self.number_of_mics)])
-        elif 0 < len(self.room_dim) < 3:  # 2-D and 1-D
-            self.microphone_location_to_use = self.microphone_location
-            self.microphones = pra.linear_2D_array(self.microphone_location_to_use,
-                                                   self.number_of_mics, 0, 0.1)
-        else:
-            raise ValueError("Error. Need a microphone location to use")
-
-        self.room.add_microphone_array(pra.MicrophoneArray(self.microphones,
+        self.room.add_microphone_array(pra.MicrophoneArray(self.mics,
                                                            fs=sample_fs))
         self.room.simulate()
 
@@ -121,7 +122,7 @@ class ExperimentalMicData:
            the microphone array (centroid). In addition, determines the
            distance between the centroid and the sound source."""
 
-        centroid = np.sum(self.microphones, axis=-1) / len(self.room_dim)
+        centroid = np.sum(self.mics, axis=-1) / len(self.room_dim)
         self.dist = math.sqrt(sum([(a - b)**2 for a, b in zip(list(centroid),
                                                               self.source_dim)]))
         difference = np.subtract(np.array(self.source_dim), centroid)
@@ -147,8 +148,8 @@ class ExperimentalMicData:
         axes.set_zlim(0, self.room_dim[2])  # for 3-d
 
         # Plot the microphones
-        axes.scatter(self.microphones[0], self.microphones[1],
-                     self.microphones[2],
+        axes.scatter(self.mics[0], self.mics[1],
+                     self.mics[2],
                      label='Microphones 1-{:d}'.format(self.number_of_mics))
 
         # Plot the S1 or S2 location
@@ -166,7 +167,6 @@ class ExperimentalMicData:
            into a mat file. Plots the microphones and sound source in a 3-d
            plot if necessary. Note: the microphone locations are recorded
            under a new coordinate system in relation to the center of the room.
-
            """
 
         sampling_rate, signal = self._read_wav_file()
@@ -184,8 +184,8 @@ class ExperimentalMicData:
 
         self._save_file(test_dict)
 
-        # Note: transposed microphone locations, so list is in x, y, z order
-        converted_mic_locations = np.subtract(self.microphones.T,
+        # Note: transposed microphones, so that one row is x,y,z order
+        converted_mic_locations = np.subtract(self.mics.T,
                                               self.set_room_dimensions()/2).tolist()
 
         return self.determine_angle_and_distance(), self.name_to_save_file, \

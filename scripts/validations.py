@@ -108,7 +108,7 @@ def validate_file_path(func):
 
 
 def validate_room_source_dim_and_mic_loc(func):
-    """Validates that there the room dimension, source dimensions and
+    """Validates that the room dimension, source dimensions and
        microphone locations are set."""
 
     @functools.wraps(func)

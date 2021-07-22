@@ -169,13 +169,14 @@ class SoundSourceLocation:
                                     for signal in signal_list])
 
         # Construct the new DOA object
-        doa = pra.doa.algorithms.get(self.algo_name)(L=microphones,
+        # Note: Transpose order of microphones
+        doa = pra.doa.algorithms.get(self.algo_name)(L=microphones.T,
                                                      fs=self.sampling_rate,
                                                      nfft=self.fft_size,
                                                      c=self.sound_speed,
                                                      num_src=self.num_sources,
                                                      max_four=4, dim=3,
-                                                     n_grid=2000)
+                                                     n_grid=1000)
 
         doa.locate_sources(stft_signal, freq_range=self.freq_range)
 
@@ -257,7 +258,6 @@ class SoundSourceLocation:
         """
 
         if self.default:
-
             if self.s1_bool:
                 # List of specific microphones to quickly find S1
                 # (where M and T are located)
@@ -298,8 +298,9 @@ class SoundSourceLocation:
         # Format: (Width, Depth, Length)
         return np.add(center_of_room, potential_sources)
 
-    def run(self, *args):
-        """Runs all the functions."""
+    def run_estimates(self, *args):
+        """Runs process potential estimates to extract the potential
+           locations of the sound source."""
 
         mic_info = args[0]
         yield self.process_potential_estimates(mic_info)

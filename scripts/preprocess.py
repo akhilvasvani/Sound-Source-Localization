@@ -144,6 +144,10 @@ class PrepareData:
             Returns:
                 signal_list: (list) list of the associated signals
                 microphone locations: (list) list of the microphone locations
+
+            Raises:
+                ValueError: When the microphone location list does not match the
+                            match the microphone signal list.
         """
 
         all_microphone_locations = self.set_microphone_locations()
@@ -165,8 +169,8 @@ class PrepareData:
 
             return microphones_locations_and_signals_dict
 
-        return "Error. Mismatch in length of microphone location list " \
-               "and length of signal list."
+        raise ValueError("Error. Mismatch in length of microphone "
+                         "location list and length of signal list.")
 
     def load_file(self):
         """Loads in .mat file. Otherwise yield a list-- microphones, signals,
@@ -175,7 +179,7 @@ class PrepareData:
 
         if self.default:
             cycles = ["".join(['Cycle', str(k)]) for k in range(24)]
-            sound_sources = ["".join(['S', str(k)]) for k in range(1, 3)]
+            sound_sources = ["".join(['S', str(k)]) for k in range(2, 3)]
             sound_list = ["_".join([sound_source, cycle])
                           for sound_source in sound_sources for cycle in cycles]
 

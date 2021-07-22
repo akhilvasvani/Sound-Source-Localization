@@ -40,8 +40,9 @@ class DetermineSourceLocation(SoundSourceLocation):
         SoundSourceLocation.__init__(self, algo_name)
         self.source_name = source_name
         self.all_source_estimates = all_source_estimates
-        self._microphone_locations = args or None
+        self._microphone_locations = args
         self.default = default
+        self.s1_bool = kwargs.get('s1_bool') or None
 
         *self.room_dim, = [0.35, 0.22, 0.25] if self.default else iter(kwargs.get('room_dim'))
 
@@ -111,6 +112,14 @@ class DetermineSourceLocation(SoundSourceLocation):
         axes.scatter(new_pts[:, 0], new_pts[:, 1], new_pts[:, 2], 'b',
                      label='Lines of Source Location')
 
+        # Recenter the S1 source
+        s_source = np.add(self.center_of_room, np.array([-0.0639405,
+                                                         -0.01994509,
+                                                         -0.02030148]))
+        # # Plot the S1 or S2 location
+        # axes.scatter(s_source[0], s_source[1], s_source[2], 'r',
+        #              label='True Source Location')
+
         axes.legend()
         plt.show()
 
@@ -122,7 +131,6 @@ class DetermineSourceLocation(SoundSourceLocation):
            S1 and S2 source locations."""
 
         if self.default:
-            # TODO: Test out S1_Bool?
             if self.s1_bool:
                 # Set the boundaries on where we think S1 lies
                 # Second line is room_dim[1]
@@ -182,7 +190,6 @@ class DetermineSourceLocation(SoundSourceLocation):
                 s_source = np.add(self.center_of_room, np.array([-0.0639405,
                                                                  -0.01994509,
                                                                  -0.02030148]))
-
                 # return the potential S1 source and the S1 source
                 return source, s_source
 
@@ -288,9 +295,10 @@ class DetermineSourceLocation(SoundSourceLocation):
     def sprint(self):
         """Runs all the functions."""
         self.plot_everything()
-
+        # self.use_kd_tree()
+        #
         # if self.default:
-            # true_source, poten_source = self.use_kd_tree()
+        #     true_source, poten_source = self.use_kd_tree()
             # true_source, poten_source = self.full_filter()
             # self._plot(true_source, poten_source)
 

@@ -8,6 +8,8 @@ from scripts.preprocess import PrepareData
 from scripts.sound_source_localization import SoundSourceLocation
 from scripts.determine_source import DetermineSourceLocation
 
+# TODO: Test CustomMicrophone
+
 
 def main(experi=True):
 
@@ -21,9 +23,10 @@ def main(experi=True):
             sample_mic_signal_loc_dict, s1_or_not, sound_cycle = next(test_data)
             source_estimates = SoundSourceLocation(method_name,
                                                    s1_bool=s1_or_not,
-                                                   default=True).run(sample_mic_signal_loc_dict)
+                                                   default=True).run_estimates(sample_mic_signal_loc_dict)
             ts1 = DetermineSourceLocation(method_name, sound_cycle,
-                                          *source_estimates, default=True).run()
+                                          *source_estimates, default=True,
+                                          s1_bool=s1_or_not).sprint()
 
     if experi:
         head = '/home/akhil/Sound-Source-Localization/data/CMU_ARCTIC/cmu_us_bdl_arctic/wav/'
@@ -37,10 +40,16 @@ def main(experi=True):
         microphone_location = [15 / 100, 0 / 100, 3 / 100]
         source_location = [2.5 / 100, 4.5 / 100, 7.8 / 100]
 
-        distance, *true_angles, output_file_name, converted_mic_locations, sample_rate = ExperimentalMicData(sample_filename,
+        distance, *true_angles, output_file_name, converted_mic_locations, \
+        sample_rate = ExperimentalMicData(sample_filename,
+                                          number_of_mics=3,
+                                          custom_mic_setup='square',
                                           room_dim=room_dimensions,
                                           source_dim=source_location,
-                                          mic_location=microphone_location).run(plot=True)
+                                          mic_location=microphone_location,
+                                          n=3,
+                                          phi=0.2,
+                                          d=0.4).run(plot=True)
         test_data = PrepareData(output_file_name, *converted_mic_locations).load_file()
         sample_mic_signal_loc_dict = next(test_data)
         source_estimates = SoundSourceLocation(method_name,
@@ -48,7 +57,7 @@ def main(experi=True):
                                                s1_bool=None,
                                                x_dim_max=room_dimensions[0],
                                                y_dim_max=room_dimensions[1],
-                                               z_dim_max=room_dimensions[2]).run(sample_mic_signal_loc_dict)
+                                               z_dim_max=room_dimensions[2]).run_estimates(sample_mic_signal_loc_dict)
         ts1 = DetermineSourceLocation(method_name, tail, *source_estimates,
                                       *converted_mic_locations,
                                       room_dim=room_dimensions).sprint()
