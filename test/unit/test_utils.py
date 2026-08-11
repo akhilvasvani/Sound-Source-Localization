@@ -1,10 +1,10 @@
 import unittest
 import numpy as np
 
-from scripts.validations import convert_to_one_list, \
+from tools.validations import convert_to_one_list, \
     check_list_of_lists_are_same_length
 
-from scripts.utils import MultiProcessingWithReturnValue
+from tools.utilities import MultiProcessingWithReturnValue
 
 
 def target_function(sample_name, *args):

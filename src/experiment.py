@@ -13,9 +13,9 @@ from mpl_toolkits.mplot3d import Axes3D
 
 import pyroomacoustics as pra
 
-from scripts.validations import validate_room_source_dim_and_mic_loc, \
+from tools.validations import validate_room_source_dim_and_mic_loc, \
     validate_file_path
-from scripts.utils import CustomMicrophoneSetUp
+from tools.utilities import CustomMicrophoneSetUp
 
 
 class ExperimentalMicData:
@@ -42,15 +42,98 @@ class ExperimentalMicData:
         *self.source_dim, = iter(kwargs.get('source_dim'))
         *self.microphone_location, = iter(kwargs.get('mic_location'))
 
+        # Multi-cluster support (new): a single CustomMicrophoneSetUp call
+        # always produces a COPLANAR sub-array (every generated microphone
+        # shares the same z-height -- see tools/utilities.py). A DOA
+        # estimate from mics that all lie in one horizontal plane suffers
+        # an inherent elevation (colatitude) mirror ambiguity: a source at
+        # colatitude theta and one at (180 - theta) relative to that plane
+        # are physically indistinguishable from arrival-time differences
+        # alone. This was verified empirically: a single 6-mic circular
+        # array at a fixed height produced colatitude estimates matching
+        # (180 - true_colatitude) to within a fraction of a degree.
+        # `mic_clusters`, if supplied, places several independent
+        # sub-arrays at different (x, y, z) centers (e.g. near different
+        # corners/heights of the room); microphone COMBINATIONS that mix
+        # mics from different, non-coplanar clusters are then genuinely
+        # 3-D and are not subject to this ambiguity.
+        self.mic_clusters_spec = kwargs.get('mic_clusters')
         self.custom_mic_setup = custom_mic_setup
-        if self.custom_mic_setup is not None:
+        # `mic_group_names`: list of tuples of 1-indexed mic names
+        # ('mic1', 'mic2', ...), one tuple per physical cluster, in the
+        # same global mic numbering used for the saved .mat file and
+        # `PrepareData`/`SoundSourceLocation`. Populated only when
+        # `mic_clusters` is used; consumers pass this straight to
+        # `SoundSourceLocation.run_estimates(..., mic_groups=...)` to get
+        # exactly one triangulation ray per physical cluster.
+        self.mic_group_names = None
+
+        if self.mic_clusters_spec is not None:
+            cluster_mic_arrays = []
+            mic_group_names = []
+            total_mics = 0
+            for cluster in self.mic_clusters_spec:
+                cluster = dict(cluster)
+                center = cluster.pop('center')
+
+                if 'positions' in cluster:
+                    # Explicit relative [dx, dy, dz] offsets from `center`,
+                    # for a small, deliberately NON-planar physical mic
+                    # cluster (e.g. a compact tetrahedral mount): unlike
+                    # CustomMicrophoneSetUp's 2-D pre-arranged layouts
+                    # (linear/circular/square/poisson/spiral), which always
+                    # share one z-height per cluster, this lets a single
+                    # cluster's own microphones disambiguate elevation
+                    # (colatitude) on their own, without needing to mix
+                    # microphones from other, far-apart clusters -- which
+                    # would otherwise create spatial aliasing (inter-mic
+                    # spacing approaching/exceeding half a wavelength).
+                    offsets = np.asarray(cluster.pop('positions'), dtype=float)
+                    sub_array = (np.asarray(center, dtype=float)[:, None] + offsets.T)
+                    bounds = np.asarray(self.room_dim, dtype=float)
+                    mics_xyz = sub_array.T
+                    out_of_bounds = (mics_xyz < 0.0) | (mics_xyz > bounds[None, :])
+                    if np.any(out_of_bounds):
+                        bad = mics_xyz[np.any(out_of_bounds, axis=1)].tolist()
+                        raise ValueError(
+                            f"Error. Cluster at center {center} has microphone(s) "
+                            f"outside room bounds {self.room_dim}: {bad}."
+                        )
+                else:
+                    custom = cluster.pop('custom')
+                    n_mics = cluster.pop('n')
+                    sub_array = CustomMicrophoneSetUp(custom, center, n_mics,
+                                                      self.room_dim,
+                                                      **cluster).run()
+
+                n_this_cluster = sub_array.shape[-1]
+                mic_group_names.append(tuple(
+                    "".join(['mic', str(total_mics + i + 1)])
+                    for i in range(n_this_cluster)))
+                cluster_mic_arrays.append(sub_array)
+                total_mics += n_this_cluster
+
+            self.mics = np.hstack(cluster_mic_arrays)
+            self.number_of_mics = total_mics
+            self.mic_group_names = mic_group_names
+        elif self.custom_mic_setup is not None:
             custom_mic_kwargs = {k: v for k, v in kwargs.items() if k not in ['room_dim',
                                                                               'source_dim',
-                                                                              'mic_location']}
+                                                                              'mic_location',
+                                                                              'absorption',
+                                                                              'max_order',
+                                                                              'mic_clusters']}
+            # Bug fix: this used to pass `len(self.room_dim)` (i.e. just the
+            # integer 3) as "room_dimension", which made it IMPOSSIBLE for
+            # CustomMicrophoneSetUp to bounds-check generated microphone
+            # positions against the room. Pass the actual physical room
+            # bounds instead, so out-of-room microphone layouts are caught
+            # immediately with a clear error instead of crashing deep
+            # inside pyroomacoustics's reflection computation.
             self.mics = CustomMicrophoneSetUp(self.custom_mic_setup,
                                               self.microphone_location,
                                               self.number_of_mics,
-                                              len(self.room_dim),
+                                              self.room_dim,
                                               **custom_mic_kwargs).run()
             if self.custom_mic_setup == 'square':
                 self.number_of_mics *= kwargs.get('n')
@@ -58,6 +141,15 @@ class ExperimentalMicData:
             self.mics = self.microphone_location
 
         self.room = None
+
+        # Reverberation configuration. Previously these were never set,
+        # so `pra.ShoeBox` silently fell back to library defaults
+        # (max_order=1 to a handful of reflections, no explicit
+        # absorption/material), meaning the shipped example never
+        # deliberately produced meaningful reverberation. Both are now
+        # explicit and configurable via kwargs.
+        self.absorption = kwargs.get('absorption', 0.25)
+        self.max_order = kwargs.get('max_order', 10)
 
         self.dist = 0
         self.true_azimuth, self.true_colatitude = 0, 0
@@ -96,8 +188,13 @@ class ExperimentalMicData:
 
     def setup_room(self, sample_fs):
         """Sets up the simulated room (shoebox) with the room dimensions
-           and the sampling rate of the sound source."""
-        self.room = pra.ShoeBox(self.set_room_dimensions(), fs=sample_fs)
+           and the sampling rate of the sound source. Explicitly sets an
+           absorption/material and a max reflection order so the room
+           actually produces deliberate, meaningful reverberation instead
+           of relying on pyroomacoustics's bare defaults."""
+        self.room = pra.ShoeBox(self.set_room_dimensions(), fs=sample_fs,
+                                materials=pra.Material(self.absorption),
+                                max_order=self.max_order)
 
     def set_sound_source(self, sample_signal):
         """Add a source somewhere in the room"""
@@ -122,13 +219,25 @@ class ExperimentalMicData:
            the microphone array (centroid). In addition, determines the
            distance between the centroid and the sound source."""
 
-        centroid = np.sum(self.mics, axis=-1) / len(self.room_dim)
+        # Bug fix: this used to divide by `len(self.room_dim)` (always 3,
+        # the number of spatial dimensions) instead of the actual number of
+        # microphones, which is only coincidentally correct when there are
+        # exactly 3 microphones. Divide by the true microphone count.
+        centroid = np.sum(self.mics, axis=-1) / self.mics.shape[-1]
         self.dist = math.sqrt(sum([(a - b)**2 for a, b in zip(list(centroid),
                                                               self.source_dim)]))
         difference = np.subtract(np.array(self.source_dim), centroid)
         self.true_azimuth = np.arctan2(difference[1], difference[0])
-        self.true_colatitude = np.arctan(math.sqrt(difference[0]**2 +
-                                                   difference[1]**2)/(difference[-1]))
+        # Bug fix: `np.arctan` only returns values in (-90, 90) degrees, so
+        # it can never represent a true colatitude greater than 90 degrees
+        # (i.e. any source below the microphone-array plane) -- it silently
+        # produces a wrong angle (verified: off by up to 180 degrees) whenever
+        # difference[-1] (z) is negative. `np.arctan2` with the correct
+        # numerator/denominator ordering handles the full [0, 180] degree
+        # range and matches the same colatitude convention used everywhere
+        # else in this project (see src/triangulation.py).
+        self.true_colatitude = np.arctan2(math.sqrt(difference[0]**2 +
+                                                    difference[1]**2), difference[-1])
 
         return self.dist, self.true_azimuth * 180 / np.pi, \
                self.true_colatitude * 180 / np.pi
@@ -189,4 +298,4 @@ class ExperimentalMicData:
                                               self.set_room_dimensions()/2).tolist()
 
         return self.determine_angle_and_distance(), self.name_to_save_file, \
-               converted_mic_locations, sampling_rate
+               converted_mic_locations, sampling_rate, self.mic_group_names

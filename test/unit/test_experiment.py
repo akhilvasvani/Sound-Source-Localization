@@ -1,6 +1,6 @@
 import unittest
 
-from scripts.experiment import ExperimentalMicData
+from src.experiment import ExperimentalMicData
 
 
 class ExperimentalMicDataTestCase(unittest.TestCase):
