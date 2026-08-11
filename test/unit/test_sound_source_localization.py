@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from scripts.sound_source_localization import SoundSourceLocation
+from src.sound_source_localization import SoundSourceLocation
 
 # TODO:
 #   1) Test one Real case in DifferenceOfArrivalsTestCase
@@ -9,8 +9,8 @@ from scripts.sound_source_localization import SoundSourceLocation
 
 class SoundSourceLocationTestCase(unittest.TestCase):
     def setUp(self):
-        sample_filepath, sample_method = '/home/akhil/Sound-Source-Localization/data/heart sound/raw/', 'SRP'
-        self.src = SoundSourceLocation(sample_filepath, sample_method)
+        sample_method = 'SRP'
+        self.src = SoundSourceLocation(sample_method)
 
         self.test_get_centroid = self.src.get_centroid
 
@@ -33,17 +33,25 @@ class SoundSourceLocationTestCase(unittest.TestCase):
 
 class InitTestCase(SoundSourceLocationTestCase):
     """
-    Test that the initial attributes are set up correctly
+    Test that the initial attributes are set up correctly.
+
+    Note: the original version of these tests asserted `sound_speed == 30`
+    and referenced `self.src.fs`/`self.src.tol`/`self.src.radius`, none of
+    which are physically meaningful or still exist. `sound_speed=30` was a
+    bug (see `SoundSourceLocation`'s docstring) fixed to the real speed of
+    sound in air (343.0 m/s); `tol`/`radius` belonged to the old dead
+    radius-sampling code path, replaced by real ray triangulation in
+    `src/triangulation.py` (see also `test/unit/test_triangulation.py`).
     """
 
     def test_sound_speed(self):
-        self.assertEqual(self.src.sound_speed, 30)
+        self.assertEqual(self.src.sound_speed, 343.0)
 
     def test_combinations_number(self):
         self.assertEqual(self.src.mic_combinations_number, 3)
 
     def test_sampling_frequency(self):
-        self.assertEqual(self.src.fs, 16000)
+        self.assertEqual(self.src.sampling_rate, 16000)
 
     def test_fast_fourier_transform_size(self):
         self.assertEqual(self.src.fft_size, 256)
@@ -51,12 +59,15 @@ class InitTestCase(SoundSourceLocationTestCase):
     def test_frequency_range(self):
         self.assertEqual(self.src.freq_range, [0, 250])
 
-    def test_tolerance(self):
-        self.assertEqual(self.src.tol, 1e-3)
+    def test_frequency_range_override(self):
+        custom = SoundSourceLocation('SRP', freq_range=[300, 3500])
+        self.assertEqual(custom.freq_range, [300, 3500])
 
-    def test_radius(self):
-        test_radius = np.arange(0, 0.5, self.src.tol)[:, np.newaxis]
-        self.assertTrue(np.allclose(self.src.radius, test_radius, rtol=1e-05, atol=1e-08))
+    def test_triangulation_method_default(self):
+        self.assertEqual(self.src.triangulation_method, 'huber')
+
+    def test_n_grid_default(self):
+        self.assertEqual(self.src.n_grid, 4000)
 
 
 class GetCentroidTestCase(SoundSourceLocationTestCase):

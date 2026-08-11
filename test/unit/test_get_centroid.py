@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from scripts.sound_source_localization import SoundSourceLocation
+from src.sound_source_localization import SoundSourceLocation
 
 
 class GetCentroidTestCase(unittest.TestCase):
@@ -10,8 +10,8 @@ class GetCentroidTestCase(unittest.TestCase):
     """
 
     def setUp(self):
-        sample_filepath, sample_method = 'blah', 'SRP'
-        self.test_src = SoundSourceLocation(sample_filepath, sample_method)
+        sample_method = 'SRP'
+        self.test_src = SoundSourceLocation(sample_method)
         self.function = self.test_src.get_centroid
 
     def test_mic_list_empty(self):
@@ -26,7 +26,12 @@ class GetCentroidTestCase(unittest.TestCase):
 
     def test_mic_lists_not_same_length(self):
         test_list = [[5.0, 7.0], [7.9, -0.56], [7.0, -4.5, 6.0]]
-        with self.assertRaises(TypeError):
+        # The actual validator (tools/validations.py) raises ValueError for
+        # this case, not TypeError -- this test's expectation was simply
+        # wrong (never actually exercised, since `SoundSourceLocation('blah',
+        # 'SRP')` itself would have failed under the current, correct
+        # constructor signature before this fix).
+        with self.assertRaises(ValueError):
             self.function(test_list)
 
     def test_mic_list_not_all_float_types(self):

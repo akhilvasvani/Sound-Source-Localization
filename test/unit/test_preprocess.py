@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from scripts.preprocess import PrepareData
+from src.preprocess import PrepareData
 
 
 class PrepareDataTestCase(unittest.TestCase):
@@ -12,7 +12,11 @@ class PrepareDataTestCase(unittest.TestCase):
                                                'CMU_ARCTIC/cmu_us_bdl_arctic/wav/',
                                                'arctic_a0001.wav'])
 
-        self.src_default = PrepareData(sample_filepath_default, default=True)
+        # PrepareData's constructor takes microphone-location positional
+        # args (`*args`) and a `recovered` keyword, not a `default` keyword
+        # -- there is no such parameter, so `default=True` always raised
+        # TypeError before even reaching the tests below.
+        self.src_default = PrepareData(sample_filepath_default)
         self.src_non_default = PrepareData(sample_filename_non_default)
 
 
@@ -73,7 +77,13 @@ class GetMicSignalLocationCase(PrepareDataTestCase):
             self.src_default._get_mic_signal_location(test_numpy_signal)
 
     def test_default_signal_empty(self):
-        test_signal = np.array([np.array([3, 4]), np.array([]), np.array([3])])
+        # dtype=object is required here on modern numpy: building a plain
+        # np.array() from ragged (different-length) sub-arrays now raises
+        # ValueError itself instead of silently creating an object array,
+        # which would fail this test before it even reached the method
+        # under test.
+        test_signal = np.array([np.array([3, 4]), np.array([]), np.array([3])],
+                               dtype=object)
         with self.assertRaises(ValueError):
             self.src_default._get_mic_signal_location(test_signal)
 
@@ -94,7 +104,8 @@ class GetMicSignalLocationCase(PrepareDataTestCase):
             self.src_default._get_mic_signal_location(test_numpy_signal)
 
     def test_non_default_signal_empty(self):
-        test_signal = np.array([np.array([3, 4]), np.array([]), np.array([3])])
+        test_signal = np.array([np.array([3, 4]), np.array([]), np.array([3])],
+                               dtype=object)
         with self.assertRaises(ValueError):
             self.src_default._get_mic_signal_location(test_signal)
 

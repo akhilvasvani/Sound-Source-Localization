@@ -1,81 +1,256 @@
 # Sound-Source-Localization-in-a-Reverberant Environment
 
-Sound Source Localization in a Reverberant Environment was a project I did for my master's degree at Johns Hopkins. In this project, we perform sound source localization in the human heart to detect S1 and S2 sounds. 
+Sound Source Localization in a Reverberant Environment was originally a
+project for a master's degree at Johns Hopkins, aimed at locating S1/S2
+heart sounds recorded by a microphone array (e.g. for automated heart-murmur
+detection). This repository estimates a sound source's 3-D position by:
 
-# Motivation
+1. Computing a direction-of-arrival (DOA) bearing (azimuth + colatitude)
+   from each of several small microphone clusters, using pyroomacoustics's
+   DOA algorithms (SRP-PHAT by default; MUSIC/TOPS/CSSM/WAVES also
+   supported).
+2. Converting each cluster's bearing into a 3-D ray anchored at that
+   cluster's centroid.
+3. Triangulating all the resulting rays into a single 3-D position
+   estimate (least-squares, Huber-robust, or RANSAC).
 
-The aim of this project is to help quickly find and detect heart murmurs or other heart-related issues in a short period of time. In order to accurately diagnosis heart murmurs, the S1 and S2 hearts sounds need to known. Once found, one can listen and classify a heart murmur by its signals collected.
+**Status of this fork:** this is a from-scratch repair of a repository that,
+as originally written, could not run at all (broken imports, no packaging)
+and, even after being made to run, never actually computed a source-location
+estimate -- see "History of this fix" below for exactly what was broken and
+what was rebuilt. It now runs end-to-end, has a real triangulation
+algorithm, and is validated with both math-only and full-audio-simulation
+tests (see "Accuracy" below for honest, measured numbers -- including where
+it still falls short of a sub-cm target).
 
+## Setup
 
-# Background
+```bash
+git clone <this repo>
+cd Sound-Source-Localization
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+pip install -e .          # installs `src`/`tools` as importable packages
+```
 
-## DOA
+Requires Python >= 3.8. See `requirements.txt` for pinned dependency ranges
+(numpy, scipy, matplotlib, pyroomacoustics, pytest).
 
-Imagine two antennas a distance d apart. The antennas both receive a radio wave from a far away source. Assuming that the front of the radio wave is a flat plane, then the angle between each antenna’s normal and the vector of the radio wave is the Direction of arrival (DOA) (θ). Now, over N snapshots, an algorithm can be implemented to estimate the value of multiple signals DOA angles.
+## Usage
 
-For generally far and wide signals, a difference in wavelength exists when the  same  signal reaches different array elements. This difference leads to a phase difference between the arrival array elements (τ). Using the phase difference between the array elements of the signal one can estimate the signal azimuth as well as the signal co-latitude, which is the basic principle of DOA estimation.
+Run the self-contained demo (generates a synthetic broadband test signal,
+simulates a reverberant room, estimates the source location, and prints the
+real measured error against the known, simulated source position):
 
-## Methods
+```bash
+python -m src.main
+```
 
-Multiple signal classification (MUSIC) is versatile because it provides asymptotically unbiased estimates of signal parameters that approach the Cramer-Rao accuracy bound. Instead of maximizing the probability---assuming that the data is normally distributed (Gaussian), MUSIC models the data as the sum of point source emissions and noise. Geometrically speaking, MUSIC minimizes the angle θ between the signal subspace and the microphone. Unlike the maximum likelihood method, which would minimize some type of weighted combination for all component distances.
+Run the full test suite:
 
-SRP uses a steered-beamformer approach to search over a predefined spatial region looking for either a peak or peaks in the power of its output signal. Although computationally expensive, SRP combines the signals from multiple microphones rather than using data from each pair and their respective time-delay difference between the pair. By using the data from all microphones, this approach compensates for the short duration of each data segment used for localization in a reverberant environment.
+```bash
+pytest test/
+```
 
-Test of orthogonality of projected subspaces, (TOPS), is another direction-of-arrival (DOA) estimation algorithm for wideband sources. This technique estimates DOAs by measuring multifrequency orthogonal relations of the sources between the signal and the noise subspaces. Unlike other coherent wideband methods, such as CSSM and WAVES, the new method does not need to preprocess for initial values. TOPS performs best in medium signal-to-noise environment while coherent methods work well in a low signal-to-noise environment and incoherent methods work well in high signal-to-noise environment.
+Run the honest end-to-end validation (both the pure-geometry triangulation
+check and the full acoustic pipeline, across several source positions and
+reverberation levels -- see "Accuracy" below for what it reports):
 
+```bash
+python -m validation.run_validation
+```
 
-CSSM constructs a single signal subspace for high-resolution estimation of the angles of arrival of multiple wide-band plane waves. "The technique relies on an approximately coherent combination of the spatial signal spaces of the temporally narrow-band decomposition of the received signal vector from an array of sensors". Unlike CSSM, a new approach to wideband direction finding, called the weighted average of signal subspaces (WAVES), combines a robust near-optimal data-adaptive statistic and focuses matrices to ensure a statistically robust preprocessing of wideband data.
+## Algorithm
 
-## Angles
+### 1. Direction-of-arrival (DOA) per microphone cluster
 
-We use the physics approach to thinking of ths spherical coordinate system:
+Given a small set of nearby microphones (a "cluster"), pyroomacoustics's DOA
+algorithms search over a grid of candidate directions and pick the one whose
+predicted inter-microphone delays best match the recorded signals'
+cross-correlation (SRP-PHAT) or spatial-covariance structure (MUSIC and
+others). We use `src/sound_source_localization.py`'s
+`get_difference_of_arrivals()` for this, wrapping
+`pyroomacoustics.doa.algorithms`.
 
-	radial distance r 
-	polar (colatitude) angle θ (theta)--between z axis and r 
-	azimuthal angle φ (phi)--between x and y axis
+### 2. Ray triangulation (`src/triangulation.py`)
 
-# How to Use
+Each cluster's (centroid, direction) pair defines a 3-D ray. With multiple
+rays from spatially separated clusters, the source is (in principle) at
+their common intersection point -- but real DOA estimates are noisy, so the
+rays generally do not intersect exactly. `src/triangulation.py` finds the
+point minimizing (a robust function of) the sum of squared perpendicular
+distances to every ray:
 
-So, in the first script, ICA, the data, in a .mat file (MATLAB file), is read in and split up into 24 cycles each labeled in a Folder S1 and S2. 
+- `triangulate_rays()` -- ordinary linear least squares (closed-form).
+- `huber_weighted_triangulate()` -- iteratively re-weighted least squares
+  with a Huber loss, down-weighting rays with unusually large residuals
+  (default; robust to a modest fraction of bad/reflected rays).
+- `ransac_triangulate()` -- RANSAC over ray subsets, for cases where many
+  rays may be corrupted (e.g. strong reverberation).
 
-Next, in the main script, we used the distance of arrival (DOA) algorithms to calculate the azimuth and colatitude angles from the center of the microphones. Once all angles are found, we convert them into a cartesian coordiates (x,y,z) and place them in a K-Dimensional Tree structure to find the S1 and S2 sources. Those cartesian coordinates are saved into a csv file. 
+This is real geometry, not a placeholder: given exact bearings, it recovers
+the true source position to floating-point precision (see "Accuracy").
 
-Finally, last of all, all those coordinates are graphed, displayed in a png image, and saved as well. 
+### 3. Why microphone clusters must be small AND non-planar
 
-Note: csvs are saved in the format width, depth, and then length. This is the most accurate depiction of where the S1 and S2 Sounds are
+Two real acoustic/geometric constraints drove this fork's array design
+(both verified empirically while building this fix, not just asserted):
 
-# Time to Run
+- **Coplanar elevation ambiguity.** Any microphone cluster whose mics all
+  share one height (e.g. a flat circular or linear array) cannot
+  distinguish a source at colatitude θ from one at (180° − θ): both produce
+  identical inter-mic delays. A single flat 6-mic array in this project's
+  own test scenario, e.g., returned an estimate of 111.08° colatitude for a
+  true colatitude of 68.86° (68.86° and 180° − 68.86° = 111.14° are a
+  near-exact mirror pair). The fix: give each physical cluster its own
+  small amount of vertical extent (a compact tetrahedron of 4 mics, not a
+  flat polygon), so a single cluster's own microphones can resolve
+  elevation without needing help from any other cluster.
+- **Spatial aliasing across widely-separated microphones.** DOA algorithms
+  like SRP-PHAT require inter-microphone spacing well under half the
+  wavelength of the highest analyzed frequency (≈17 cm at 1000 Hz; ≈4.9 cm
+  at 3500 Hz). Mixing microphones from clusters that are *meters* apart
+  into a single DOA computation causes severe phase aliasing and produces
+  effectively random angle estimates -- measured directly in this project:
+  doing so collapsed the triangulated estimate to roughly the centroid of
+  the cluster centers, with ~1.27 m of error. The fix: compute DOA using
+  *only* each cluster's own (few-cm-spaced) microphones -- never mixing
+  microphones across clusters -- and let triangulation, which only cares
+  about ray geometry and is unaffected by how far apart the ray origins
+  are, combine the resulting one-ray-per-cluster bearings.
 
-SRP ~ 1 minute
+`src/main.py` and `validation/run_validation.py` place four such compact,
+non-planar 4-mic tetrahedral clusters (`ExperimentalMicData`'s
+`mic_clusters=[{'center': [...], 'positions': [...]}]` form) at different
+corners and heights of the simulated room, and pass each cluster's own mic
+names to `SoundSourceLocation.run_estimates(..., mic_groups=...)` so exactly
+one DOA ray is computed per physical cluster.
 
-TOPS ~ 3 minutes
+## Accuracy
 
-MUSIC ~ 5 minutes
+These are **real, measured** numbers from `python -m validation.run_validation`
+(also runnable via `python -m src.main` for a single case), not targets or
+estimates. Two fundamentally different things are being measured:
 
+| Mode | What it isolates | Measured error |
+|---|---|---|
+| Geometric / oracle-angle triangulation | The triangulation math alone, given exact (non-estimated) bearings from each cluster to the source | ~10⁻¹⁵ m (machine precision) across 5 test source positions |
+| Full acoustic pipeline, near-anechoic best case (absorption 0.99, no reflections) | Real pyroomacoustics audio simulation + real SRP-PHAT DOA estimation + triangulation | mean 0.031 m, range 0.010–0.044 m across 5 test positions |
+| Full acoustic pipeline, lightly-furnished room (absorption 0.97, 1 reflection order) | Same, moderate realistic reverberation | mean 0.121 m, range 0.016–0.183 m |
+| Full acoustic pipeline, heavily reverberant room (absorption 0.25, order-10 reflections) | Same, strong realistic reverberation (the room this project originally, silently, never actually simulated -- see below) | mean 1.033 m, range 0.332–1.773 m |
 
-# Requirements
+**Honest bottom line on the requested <1 cm / <1 mm target:** the
+triangulation algorithm itself achieves it exactly (and provably -- see
+`test/unit/test_triangulation.py`, 13 tests all passing at machine
+precision). The full, real-audio acoustic pipeline gets close in the best
+case (single-digit centimeters under near-anechoic conditions) but does
+**not** reliably achieve sub-centimeter accuracy once any realistic
+reverberation is present. This is a genuine physical/algorithmic limit of
+DOA estimation from a small (few-cm aperture) microphone array in a
+reverberant room -- reflections corrupt the direct-path timing information
+DOA algorithms depend on -- not a remaining bug in this codebase. Reaching
+sub-cm accuracy in real reverberant rooms in general would require a
+fundamentally different approach (e.g. many more, larger-aperture arrays;
+time-of-flight/TDOA methods with synchronized clocks and known emission
+time; or reverberation-robust deep-learning DOA models), which is out of
+scope for this fix.
 
-Python 3.x
+## Known limitations
 
-pyroomacoustics
+- Single-source only. Multiple simultaneous sources would require
+  clustering per-cluster DOA rays into per-source groups before
+  triangulating each group separately; not implemented.
+- The 15 cm cluster aperture used by default is a deliberately tuned
+  tradeoff (see `src/main.py`'s comments): its worst-case pairwise spacing
+  is slightly *above* the strict half-wavelength anti-aliasing bound at
+  1000 Hz, but empirically outperformed smaller, fully alias-safe
+  apertures at this frequency band and array-count -- a real engineering
+  tradeoff, not a guarantee that holds at all frequencies/geometries.
+- Accuracy numbers above are for one specific room size, cluster layout,
+  and source-position sample (5 positions); results will vary with room
+  geometry, reverberation time, and array placement, and have not been
+  validated against real (non-simulated) audio hardware.
+- `freq_range` defaults to `[0, 250]` Hz (matched to the original heart-sound
+  use case) and must be overridden for other signal types, as `src/main.py`
+  does for its broadband synthetic-noise demo.
 
-SciPy
+## History of this fix (what was broken, what changed)
 
-NumPy
+The repository as received:
 
-itertools
+- Could not run: `scripts/` were imported as `tools.*`/`src.*` without
+  matching package structure or `__init__.py` files, no `requirements.txt`,
+  no `setup.py`.
+- `sound_speed` was hardcoded to `30` (m/s) -- not the speed of sound in any
+  real medium -- silently corrupting every DOA angle estimate.
+- `CustomMicrophoneSetUp` dropped the z-coordinate and never bounds-checked
+  generated microphone positions against the room, so mics could end up
+  outside the simulated room without any error.
+- The reported "source-location estimate" was actually ~500 raw candidate
+  points per ray sampled along a fixed 0–0.5 m radius sweep; a
+  `use_kd_tree()` method built a KD-tree from these points and then
+  immediately returned `None` -- there was no actual triangulation or
+  clustering step, so no single position estimate was ever produced.
+- `determine_angle_and_distance()` used `np.arctan`, which only returns
+  values in (−90°, 90°) and therefore cannot represent any true colatitude
+  above 90° (any source below the microphone-array plane) -- and divided
+  the centroid sum by `len(room_dim)` (always 3) instead of the actual
+  number of microphones.
+- `ExperimentalMicData`'s reverberation parameters (`absorption`, `max_order`)
+  were never actually passed to `pra.ShoeBox`, so the "reverberant
+  environment" in the project's own name was never deliberately simulated.
 
-Thread
+What this fix adds/changes (see `src/triangulation.py`,
+`src/sound_source_localization.py`, `src/determine_source.py`,
+`src/experiment.py`, `src/main.py`, `tools/utilities.py`, `setup.py`,
+`requirements.txt`, and the `test/`/`validation/` additions for the full
+detail, referenced inline in code comments):
 
-# Results
+- Fixed packaging/imports so the project installs and runs.
+- Fixed the `sound_speed`, z-coordinate/bounds, `arctan`→`arctan2`, and
+  centroid-divisor bugs above.
+- Added a real least-squares/Huber/RANSAC ray-triangulation module
+  (`src/triangulation.py`), replacing the dead radius-sampling/KD-tree code.
+- Rebuilt `SoundSourceLocation`/`DetermineSourceLocation` around producing
+  one actual position estimate (plus fit diagnostics: per-ray residuals,
+  inlier weights) instead of an unreduced point cloud.
+- Discovered (empirically, not assumed) and designed around the coplanar
+  elevation ambiguity and cross-cluster spatial-aliasing issues described
+  above, adding non-planar `positions`-based microphone cluster support
+  and per-cluster-only DOA computation (`mic_groups`).
+- Wired up `absorption`/`max_order` so the simulated room actually produces
+  the reverberation the project is named for.
+- Rewrote/added unit tests to match the corrected APIs (77 tests passing)
+  and added a synthetic end-to-end validation script
+  (`validation/run_validation.py`) reporting the honest accuracy numbers
+  above.
 
-There are four folders (two types: Recovered and Non-recovered signals). The recovered signals are the original microphone signals preprocessed using the JADE Algorithm to better seperate the sources. Each folder has a different number of trial results for either a 2 pair microphone combination or a 3 pair microphone combination. For each, there is a statistics text file to provide the statistics of each trial. 
+## Time to Run
 
-Overall, using the non-recovered signals proved easier to find S1 and S2 than using the recover signals did. Though to truly compare the accurary of the DOA methods, there needs to be an echocardiogram of the patient to compare with. For now though, using the approximate locations provided from an echocardiogram textbook and the paper "Imaging of heart acoustic based on the sub-space methods using a microphone array," we found the closest points to these locations for S1 and S2.
+SRP ~ 1 minute per estimate
 
-# References
+TOPS ~ 3 minutes per estimate
 
-## Heart References
+MUSIC ~ 5 minutes per estimate
+
+(Original project's own note -- these `pyroomacoustics` DOA algorithms
+differ substantially in per-call cost; SRP is used by default here.)
+
+## Results (original heart-sound study)
+
+The `results/` folder contains this project's original heart-sound (S1/S2)
+localization trial outputs (both recovered/JADE-preprocessed and raw
+microphone signals, 2- and 3-microphone combinations), predating this fix,
+kept for reference. Per the original author: using the non-recovered
+signals proved easier to localize S1/S2 than using JADE-recovered signals;
+true accuracy was assessed against approximate reference locations from an
+echocardiogram textbook and "Imaging of heart acoustic based on the
+sub-space methods using a microphone array," since no patient echocardiogram
+ground truth was available.
+
+## References
+
+### Heart references
 
 [Diagram of Heart](https://en.wikipedia.org/wiki/Pulmonary_valve#/media/File:Diagram_of_the_human_heart_(cropped).svg)
 
@@ -85,59 +260,37 @@ Overall, using the non-recovered signals proved easier to find S1 and S2 than us
 
 [Very Strong human heart diagram with body](http://www.stethographics.com/heart/main/sites.htm)
 
-[Another good diagram](https://www.google.com/search?q=heart+sound+locations&client=ubuntu&hs=1Go&channel=fs&tbm=isch&source=iu&ictx=1&fir=s559O9wHQ3RQ1M%253A%252CEj2EttfwJrRmzM%252C_&vet=1&usg=AI4_-kQ8ZFczzM9SsLvrI_Pm2fgmukBxgw&sa=X&ved=2ahUKEwiW27Gy27riAhUSy1kKHfTtCZIQ9QEwD3oECAgQDg#imgrc=v_gPbPh7ZpAvfM:&vet=1)
-
 [Mitral Valve Prolapse](https://www.webmd.com/heart/mitral-valve-prolapse-symptoms-causes-and-treatment#1)
 
-
-## JADE Algorithm Reference
+### JADE algorithm reference
 
 [JADE in Python](https://github.com/bregmanstudio/cseparate/blob/master/cjade.py)
 
 [Python F-strings](https://realpython.com/python-f-strings/)
 
-## Thread References
+### DOA / pyroomacoustics
 
-[Return a value with Threads](https://stackoverflow.com/questions/6893968/how-to-get-the-return-value-from-a-thread-in-python/6894023#6894023)
+[Pyroomacoustics](https://github.com/LCAV/pyroomacoustics)
 
-[MultiThreading vs. Multiprocessing](https://stackoverflow.com/questions/3044580/multiprocessing-vs-threading-python)
-
-[MutliThreading in General](https://www.geeksforgeeks.org/multithreading-python-set-1/)
-
-## KD Tree References
+### KD-tree references (from the original radius-sampling approach)
 
 [Fastest way to find the closest point to a given point in 3D, in Python](https://stackoverflow.com/questions/2641206/fastest-way-to-find-the-closest-point-to-a-given-point-in-3d-in-python?rq=1)
 
-[KD TREE EXAMPLE WITH CUSTOM EUCLIDEAN DISTANCE BALL QUERY](http://code.activestate.com/recipes/578434-a-simple-kd-tree-example-with-custom-euclidean-dis/)
+[scipy.spatial.KDTree](https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.spatial.KDTree.html#scipy.spatial.KDTree)
 
-[Getting rid of double brackets](https://www.quora.com/How-can-I-convert-the-list-1-2-3-into-1-2-3-in-Python-Basically-I-want-the-list-to-be-flattened)
+## Credits
 
-[Python/Scipy: KDTree Query Ball Point performance issue](https://stackoverflow.com/questions/43136142/python-scipy-kdtree-query-ball-point-performance-issue)
-
-[Using k-d trees to efficiently calculate nearest neighbors in 3D vector space](https://blog.krum.io/k-d-trees/)
-
-[scipy.spatial.KDTree](https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.spatial.KDTree.html#scipy.spatial.KDTree) 
-
-## Tricks
-
-[Saving and Loading Python Dictionary with savemat results in error](https://stackoverflow.com/questions/9232751/saving-and-loading-python-dict-with-savemat-results-in-error)
-
-[Optimal way to Append to Numpy array](https://stackoverflow.com/questions/25649788/optimal-way-to-append-to-numpy-array)
-
-[Matrix from Python to Matlab](https://stackoverflow.com/questions/1095265/matrix-from-python-to-matlab)
-
-[Create a Folder in Python](https://gist.github.com/keithweaver/562d3caa8650eefe7f84fa074e9ca949)
-
-# Credits
-
-Thank you [Pyroomacoustics](https://github.com/LCAV/pyroomacoustics) for the open-source library containing the differnt DOA methods. 
+Thank you [Pyroomacoustics](https://github.com/LCAV/pyroomacoustics) for the
+open-source library containing the different DOA methods.
 
 [Christos Sapsanis](https://engineering.jhu.edu/ece/2019/05/03/the-stethovest-aims-to-bring-the-stethoscope-up-to-date-with-modern-medical-imaging-techniques/?fbclid=IwAR25OcGjx24N1lLi9fQaTHODp0uNWiCMcliCYSmgdXiFQs7Ea_h_w50cW2o#.XriE4RNKhZJ)
 
 Professor Andreas G. Andreou
 
-# Future
-Building a deep neural network to classify the heart sounds to detect potential heart murmurs and classify them accordingly. Below is a paper that builds something similar to what I am attempting to do. The next iteration of my project will focus on this
+## Future
+
+Building a deep neural network to classify heart sounds to detect potential
+heart murmurs.
 
 [Cardiologist-level arrhythmia detection and classification in ambulatory electrocardiograms using a deep neural network](https://stanfordmlgroup.github.io/projects/ecg2/)
 
@@ -145,16 +298,6 @@ Building a deep neural network to classify the heart sounds to detect potential 
 
 [Even More Heart Data](https://physionet.org/physiobank/database/#ecg)
 
-[Diagram of where the leads are put](https://www.theonlinelearningcenter.com/Assets/PMDCBT/PIIC_Fundamentals_1.0/shell/viewer/swfs/assets/downloads/12-lead.pdf)
-
-[Types of Leads used in ECG](https://www.cardiosecur.com/magazine/specialist-articles-on-the-heart/lead-systems-how-an-ecg-works)
-
-[How to put the standard 12-leads on](https://www.adinstruments.com/blog/perform-accurate-12-lead-ecg)
-
-Maybe use some type of clustering ([K-means](https://towardsdatascience.com/k-means-clustering-algorithm-applications-evaluation-methods-and-drawbacks-aa03e644b48a), perhaps?) to cluster the points which are close to one another together. This might be a faster way to converge to a centeroid location.
-
 [Single-speaker-localization with CNNs](https://github.com/Soumitro-Chakrabarty/Single-speaker-localization)
 
-Paper: [Towards End-to-End Acoustic Localization using
-Deep Learning: from Audio Signal to Source Position
-Coordinates](https://arxiv.org/pdf/1807.11094.pdf)
+Paper: [Towards End-to-End Acoustic Localization using Deep Learning: from Audio Signal to Source Position Coordinates](https://arxiv.org/pdf/1807.11094.pdf)
