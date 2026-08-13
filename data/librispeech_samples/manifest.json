@@ -1,0 +1,34 @@
+[
+  {
+    "file": "sample_0.wav",
+    "sr": 16000,
+    "duration_s": 5.855,
+    "text": "MISTER QUILTER IS THE APOSTLE OF THE MIDDLE CLASSES AND WE ARE GLAD TO WELCOME HIS GOSPEL",
+    "speaker_id": 1272,
+    "orig": "1272-128104-0000.flac"
+  },
+  {
+    "file": "sample_1.wav",
+    "sr": 16000,
+    "duration_s": 9.01,
+    "text": "IT IS OBVIOUSLY UNNECESSARY FOR US TO POINT OUT HOW LUMINOUS THESE CRITICISMS ARE HOW DELICATE IN EXPRESSION",
+    "speaker_id": 1272,
+    "orig": "1272-128104-0005.flac"
+  },
+  {
+    "file": "sample_2.wav",
+    "sr": 16000,
+    "duration_s": 5.6,
+    "text": "NEAR THE FIRE AND THE ORNAMENTS FRED BROUGHT HOME FROM INDIA ON THE MANTEL BOARD",
+    "speaker_id": 1272,
+    "orig": "1272-128104-0010.flac"
+  },
+  {
+    "file": "sample_3.wav",
+    "sr": 16000,
+    "duration_s": 4.625,
+    "text": "I BEGGED RUGGEDO LONG AGO TO SEND HIM AWAY BUT HE WOULD NOT DO SO",
+    "speaker_id": 1272,
+    "orig": "1272-135031-0005.flac"
+  }
+]

@@ -16,6 +16,7 @@ import pyroomacoustics as pra
 from tools.validations import validate_room_source_dim_and_mic_loc, \
     validate_file_path
 from tools.utilities import CustomMicrophoneSetUp
+from src.audio_source import load_source_signal
 
 
 class ExperimentalMicData:
@@ -157,17 +158,29 @@ class ExperimentalMicData:
         self.name_to_save_file = "".join(["output/", "test_first_fun", ".mat"])
 
     def _read_wav_file(self):
-        """Reads in the .wav file and check if the file does in fact exist.
+        """Reads in the source audio file (.wav or .flac) and checks that
+           it does in fact exist. Multi-channel source files are mixed
+           down to mono, since this is the single "dry" signal emitted
+           by one simulated point source (see `src.audio_source` for the
+           generic loader, and `src.audio_source.load_multichannel_recording`
+           for the separate case of an already multi-channel *recording*
+           that should bypass room simulation entirely).
+
+           Note: this used to call `scipy.io.wavfile.read` directly,
+           which only supports .wav and silently mishandles some wav
+           sub-formats soundfile handles correctly (e.g. float32 wav).
+           It now delegates to `src.audio_source.load_source_signal`,
+           which also accepts .flac.
 
            Returns:
                fs: (integer) sampling frequency
-               signal: (numpy array) signal data
+               signal: (numpy array) mono signal data
 
             Raises:
-                FileNotFoundError: if .mat file cannot be found
+                FileNotFoundError: if the file cannot be found
         """
         try:
-            rate, signal = wavfile.read(self.filename)
+            rate, signal = load_source_signal(self.filename, mono=True)
             return rate, signal
         except OSError:
             # Check if the python version is 3.6 or greater
