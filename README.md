@@ -248,6 +248,37 @@ echocardiogram textbook and "Imaging of heart acoustic based on the
 sub-space methods using a microphone array," since no patient echocardiogram
 ground truth was available.
 
+## Real-world data benchmark & interactive demo (this round's additions)
+
+A follow-up round tested whether the reverberation-driven accuracy
+degradation described above is specific to the (synthetic, narrowband)
+heart-proxy signal used in the original validation, by running the same
+DOA algorithms against real-world, non-medical audio (LibriSpeech speech,
+ESC-50 environmental sound) with known simulated ground-truth positions.
+
+- **Full results and honest verdict:** [`reports/part1_results.md`](reports/part1_results.md).
+  Short version: no -- the reverberation-driven degradation happens just
+  as badly with real-world audio, across every dataset tested. One
+  narrower, algorithm-specific finding (the TOPS algorithm specifically
+  struggling with the narrowband signal, independent of reverberation)
+  did support part of the original hypothesis; see the report for detail.
+- **Generic `.wav`/`.flac` data loading:** `src/audio_source.py` --
+  the heart-sound `.mat` path is unchanged and still selectable
+  (`mode="heart_sound"`).
+- **Benchmark harness:** `experiments/real_world_benchmark.py` (135 runs
+  across 3 datasets x 3 RT60 levels x 5 algorithms x 3 positions); raw
+  output in `experiments/results/`.
+- **Interactive demo:** a single-page FastAPI + Streamlit app letting you
+  pick a preset (heart-proxy or real-world) or upload your own
+  multi-channel recording, run the DOA pipeline, and see the estimated
+  vs. true position in 3D. See [`demo/README.md`](demo/README.md) for
+  local run instructions.
+- **Deployment status (honest report):** [`reports/deployment_status.md`](reports/deployment_status.md) --
+  the demo runs correctly locally; it is not deployed to a public URL.
+  No Cloud Run connector was available in the environment this was built
+  in (the user's literal request), and a genuine attempt to deploy the
+  backend to Vercel hit an account-permission error unrelated to the code.
+
 ## References
 
 ### Heart references
