@@ -30,26 +30,14 @@ from src.pipeline import (
 )
 
 # --------------------------------------------------------------------------
-# Preset catalog -- a mix of heart-proxy and real-world examples, per the
-# task brief ("3-4 preset synthetic examples (mix of heart-sound and
-# real-world presets)"). Ground truth source position is known exactly
-# because these are room-simulated with a known source location.
+# Preset catalog -- real-world audio examples (LibriSpeech speech,
+# ESC-50 environmental sound). Ground truth source position is known
+# exactly because these are room-simulated with a known source location.
 # --------------------------------------------------------------------------
 PRESETS = [
     {
-        "id": "heart_proxy",
-        "label": "Heart-proxy signal (white noise, [300-1000 Hz])",
-        "description": "Reproduces the ORIGINAL repo's baseline test signal exactly -- "
-                       "band-limited Gaussian white noise, not real heart-sound audio "
-                       "(no .mat heart recording exists in this repo; see "
-                       "data/heart_proxy_samples/README.md).",
-        "wav_path": os.path.join(REPO_ROOT, "data", "heart_proxy_samples", "white_noise_0.wav"),
-        "true_source_m": [3.0, 1.0, 1.7],
-        "freq_range": [300, 1000],
-    },
-    {
         "id": "librispeech_0",
-        "label": "Real speech clip (LibriSpeech)",
+        "label": "Speech (LibriSpeech)",
         "description": "Real human speech, HuggingFace hf-internal-testing/librispeech_asr_dummy.",
         "wav_path": os.path.join(REPO_ROOT, "data", "librispeech_samples", "sample_0.wav"),
         "true_source_m": [1.0, 2.0, 0.6],
@@ -57,7 +45,7 @@ PRESETS = [
     },
     {
         "id": "librispeech_1",
-        "label": "Real speech clip #2 (LibriSpeech)",
+        "label": "Speech, second clip (LibriSpeech)",
         "description": "A second, different real speech clip from the same dataset.",
         "wav_path": os.path.join(REPO_ROOT, "data", "librispeech_samples", "sample_1.wav"),
         "true_source_m": [2.0, 1.5, 2.0],
@@ -65,7 +53,7 @@ PRESETS = [
     },
     {
         "id": "esc50_rain",
-        "label": "Real environmental sound (rain, ESC-50)",
+        "label": "Rain (ESC-50)",
         "description": "Real environmental audio, HuggingFace ashraq/esc50.",
         "wav_path": os.path.join(REPO_ROOT, "data", "esc50_samples", "rain.wav"),
         "true_source_m": [0.6, 0.6, 1.9],

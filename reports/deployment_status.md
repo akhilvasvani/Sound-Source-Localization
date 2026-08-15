@@ -74,9 +74,11 @@ read as source). Results:
 - `APP_DATA_DIR=/tmp/app_data_test` was created and confirmed writable.
 - A full **Playwright browser click-through** against the running app
   (not just an HTTP status check) exercised both modes end-to-end:
-  - **Preset mode:** selected the heart-proxy preset, clicked "Run DOA
-    pipeline," confirmed the Results panel, Algorithm/Runtime metrics,
-    and 3-D visualization all rendered with real computed numbers.
+  - **Preset mode:** selected a preset (the heart-proxy preset at the
+    time of this validation run; it has since been removed from the
+    demo -- see README.md and PR #3), clicked "Run DOA pipeline,"
+    confirmed the Results panel, Algorithm/Runtime metrics, and 3-D
+    visualization all rendered with real computed numbers.
   - **Upload mode:** uploaded a synthetic 4-channel `.wav`, clicked "Run
     DOA pipeline," confirmed the "No 3-D position fix" messaging
     rendered correctly (expected for a single mic cluster, per the

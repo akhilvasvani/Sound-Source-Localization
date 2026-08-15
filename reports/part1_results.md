@@ -1,5 +1,12 @@
 # Part 1 results: does real-world data change the reverberation story?
 
+*Historical note: `heart_proxy` below refers to a benchmark dataset used
+for this study. It was also, at the time, a selectable preset in the
+interactive demo; that demo preset has since been removed (see
+README.md and PR #3) because it never corresponded to real heart-sound
+audio (see section 0). This report is left intact as the honest,
+as-run record of the comparison.*
+
 **TL;DR / honest verdict:** No. Swapping in real-world, non-medical
 audio (LibriSpeech speech, ESC-50 environmental sounds) does **not**
 fix the reverberation-driven accuracy collapse. It happens, at

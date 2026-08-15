@@ -27,9 +27,9 @@ def test_list_presets():
     resp = client.get("/api/presets")
     assert resp.status_code == 200
     body = resp.json()
-    assert len(body["presets"]) == 4
+    assert len(body["presets"]) == 3
     ids = {p["id"] for p in body["presets"]}
-    assert {"heart_proxy", "librispeech_0", "librispeech_1", "esc50_rain"} == ids
+    assert {"librispeech_0", "librispeech_1", "esc50_rain"} == ids
     assert "SRP" in body["algorithms"]
     assert "medium" in body["rt60_levels"]
 
@@ -46,19 +46,19 @@ def test_run_preset_unknown_id_returns_404():
 
 
 def test_run_preset_bad_algorithm_returns_400():
-    resp = client.post("/api/run/preset", json={"preset_id": "heart_proxy", "algorithm": "NOT_REAL"})
+    resp = client.post("/api/run/preset", json={"preset_id": "librispeech_0", "algorithm": "NOT_REAL"})
     assert resp.status_code == 400
 
 
-def test_run_preset_heart_proxy_end_to_end():
+def test_run_preset_librispeech_end_to_end():
     resp = client.post(
         "/api/run/preset",
-        json={"preset_id": "heart_proxy", "algorithm": "SRP", "rt60_level": "low", "n_grid": 500},
+        json={"preset_id": "librispeech_0", "algorithm": "SRP", "rt60_level": "low", "n_grid": 500},
     )
     assert resp.status_code == 200
     body = resp.json()
     assert body["position_available"] is True
-    assert body["preset_id"] == "heart_proxy"
+    assert body["preset_id"] == "librispeech_0"
     assert body["error_m"] >= 0.0
     assert len(body["rays"]) == 4
 

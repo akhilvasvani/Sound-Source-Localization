@@ -1,10 +1,10 @@
 # Interactive demo -- local run instructions
 
-Single-page interactive demo: pick a preset (mix of the heart-proxy
-signal and real-world audio) or upload your own multi-channel
-recording, run the existing DOA + triangulation pipeline on it, and see
-the estimated vs. true source position/bearing in a 3-D view plus a
-results panel.
+Single-page interactive demo: pick a preset (LibriSpeech speech or
+ESC-50 environmental sound) or upload your own multi-channel recording,
+run the existing DOA + triangulation pipeline on it, and see the
+estimated vs. true source position/bearing in a 3-D view plus a results
+panel.
 
 **Stack:** a single Streamlit process (`demo/app.py`) that calls
 `src/service.py` -> `src/pipeline.py` directly, in-process. There is no
@@ -45,7 +45,7 @@ uvicorn api.app:app --host 0.0.0.0 --port 8000
 ```
 
 - `GET /api/health` -- liveness check
-- `GET /api/presets` -- the 4 preset examples, available algorithms, RT60 levels
+- `GET /api/presets` -- the 3 preset examples, available algorithms, RT60 levels
 - `GET /api/upload-mic-geometry` -- the mic layout an uploaded recording is assumed to use
 - `POST /api/run/preset` -- `{"preset_id", "algorithm", "rt60_level", "n_grid"}` -> report
 - `POST /api/run/upload` -- multipart form: `file` (.wav/.flac), `algorithm`, optional `room_dim` ("x,y,z"), optional `true_source_m` ("x,y,z") -> report
@@ -60,7 +60,7 @@ bearing (azimuth + colatitude), not a full 3-D position fix --
 triangulating a position needs at least two spatially-separated arrays.
 This is a real, physical limitation of DOA-only localization, not a demo
 bug; the response's `position_available: false` and `note` fields make
-this explicit rather than silently showing a meaningless number. The 4
+this explicit rather than silently showing a meaningless number. The 3
 built-in presets don't have this limitation because they simulate 4
 separated mic clusters (matching `src/pipeline.py`'s
 `DEFAULT_CLUSTER_CENTERS`), so they always return a full 3-D estimate.
