@@ -206,9 +206,6 @@ ESC-50 environmental sound) with known simulated ground-truth positions.
   narrower, algorithm-specific finding (the TOPS algorithm specifically
   struggling with the narrowband signal, independent of reverberation)
   did support part of the original hypothesis; see the report for detail.
-- **Generic `.wav`/`.flac` data loading:** `src/audio_source.py` --
-  the heart-sound `.mat` path is unchanged and still selectable
-  (`mode="heart_sound"`).
 - **Benchmark harness:** `experiments/real_world_benchmark.py` (135 runs
   across 3 datasets x 3 RT60 levels x 5 algorithms x 3 positions); raw
   output in `experiments/results/`.
