@@ -19,15 +19,50 @@ why no persistent disk is attached by default.
 """
 
 import os
+import uuid
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+class AppDataDirError(RuntimeError):
+    """Raised when APP_DATA_DIR can't be created or isn't actually writable.
+
+    Deliberately a plain, readable message rather than a bare OSError --
+    this is what demo/app.py's generic exception handler shows the user
+    (`st.error(f"DOA pipeline failed: {exc}")`), so it needs to point at
+    the fix, not just repeat errno text. See the Dockerfile and
+    scripts/check_app_data_dir.sh, which should catch this before
+    Streamlit ever starts in the deployed container -- if it surfaces
+    here instead, that startup check was bypassed or the directory
+    ownership doesn't match the running user.
+    """
+
+
+def _ensure_dir_writable(path):
+    """Create `path` if needed and verify it's writable by actually
+    writing and removing a scratch file (not just checking permission
+    bits, which can be misleading on some filesystems/ACLs).
+    """
+    try:
+        os.makedirs(path, exist_ok=True)
+        probe = os.path.join(path, f".write_test_{uuid.uuid4().hex}")
+        with open(probe, "w"):
+            pass
+        os.remove(probe)
+    except OSError as exc:
+        raise AppDataDirError(
+            f"APP_DATA_DIR resolved to {path!r} but it could not be created or "
+            f"is not writable by the current process (uid={os.getuid()}): {exc}. "
+            "In the deployed container, this directory must be created and "
+            "chowned to the runtime user at image build time (see Dockerfile)."
+        ) from exc
+    return path
 
 
 def get_app_data_dir():
     """Root runtime-writable directory, created if it doesn't exist."""
     base = os.environ.get("APP_DATA_DIR") or os.path.join(REPO_ROOT, "app_data")
-    os.makedirs(base, exist_ok=True)
-    return base
+    return _ensure_dir_writable(base)
 
 
 def get_uploads_dir():

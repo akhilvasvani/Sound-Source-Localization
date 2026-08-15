@@ -114,3 +114,54 @@ in a real Docker build environment, which could not be executed here.
    values in `README.md`'s "Deploying to Render" section.
 3. No further Vercel action needed -- there is no separate frontend for
    this app.
+
+## Incident: `/var/data` permission denied on Render (fixed)
+
+After the first real Render deploy, the app failed at runtime with:
+
+```
+DOA pipeline failed: [Errno 13] Permission denied: '/var/data'
+```
+
+**Cause:** `python:3.11-slim` (like most Debian-based images) ships
+`/var` as root-owned, mode `755`. The old `Dockerfile` only created and
+chowned the local-dev default (`/app/app_data`) to the non-root
+`appuser` at build time -- it never touched `/var/data`, the path
+Render actually sets `APP_DATA_DIR` to in production. At runtime,
+`appuser` (uid 1000) tried to `os.makedirs("/var/data")` and was denied,
+since a non-root process cannot create a new directory under a
+root-owned, non-writable parent.
+
+**Fix:**
+- `Dockerfile` now creates **both** `/app/app_data` and `/var/data` and
+  chowns both to `appuser`, while still root, before the `USER appuser`
+  switch -- so `/var/data` already exists and is writable by the time
+  the container starts, regardless of which `APP_DATA_DIR` value is set.
+- `docker-entrypoint.sh` now runs `scripts/check_app_data_dir.sh` before
+  starting Streamlit: it resolves `APP_DATA_DIR`, logs the running user,
+  and creates + removes a real scratch file to verify actual
+  writability -- failing fast with a clear `FATAL` message instead of a
+  cryptic error the first time a user clicks "Run".
+- `src/paths.py`'s `get_app_data_dir()` now performs the same real
+  write-probe and raises a clear `AppDataDirError` (naming the resolved
+  path, the uid, and pointing at the Dockerfile) if it's ever wrong
+  again, instead of letting a bare `PermissionError` bubble up.
+
+**Verified (as the actual non-root sandbox user, uid 2000, no Docker
+daemon available -- same limitation as the rest of this report):**
+- `test/unit/test_app_data_dir.py` (7 new tests, all passing): confirms
+  `get_app_data_dir()`/`get_uploads_dir()`/`get_generated_dir()` create
+  and write/remove scratch files successfully; confirms a clear
+  `AppDataDirError` (not a bare `OSError`) is raised when pointed at an
+  unwritable directory; runs `scripts/check_app_data_dir.sh` directly as
+  a subprocess and confirms it succeeds (and leaves no scratch file
+  behind) against a writable directory, and fails with `FATAL` in
+  `stderr` against an unwritable one.
+- Ran the real `docker-entrypoint.sh` twice: once pointed at a
+  deliberately unwritable directory (a `chmod 555` parent, simulating
+  root-owned `/var`) -- confirmed it fails immediately with the `FATAL`
+  message and never starts Streamlit; once pointed at a plain writable
+  directory (simulating the new build-time chown) -- confirmed the
+  check passes, Streamlit starts, `curl` gets `HTTP 200`, and no probe
+  files are left under `APP_DATA_DIR` afterward.
+- Full suite: **111/111 passing** (104 previous + 7 new).
