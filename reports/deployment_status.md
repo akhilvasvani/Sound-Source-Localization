@@ -37,7 +37,8 @@ section for the reasoning behind the current design.
   Vercel's Python serverless runtime. With no separate backend process
   in the new architecture, and no separate Next.js/static marketing
   frontend anywhere in this repo, there is nothing left for Vercel to
-  deploy -- see `README.md`'s "Vercel" section.
+  deploy -- see `README.md`'s "Deploying to Render" section for the
+  current (and only) deployment target.
 - **Storage now goes through `APP_DATA_DIR`.** Uploaded recordings and
   generated `.mat` scratch files used to land in the system temp
   directory (`tempfile.NamedTemporaryFile`) and a hardcoded

@@ -292,3 +292,36 @@ docker run -p 8080:8080 -e PORT=8080 -e APP_DATA_DIR=/app/app_data doa-demo
 Then open http://localhost:8080. To use a `.env` file instead of `-e`
 flags: copy [`.env.example`](.env.example) to `.env` and run with
 `docker run -p 8080:8080 -e PORT=8080 --env-file .env doa-demo`.
+
+## Deploying to Render
+
+The app deploys as a single Dockerized Render Web Service running
+`streamlit run demo/app.py` -- see "Architecture" above for why no
+separate backend service is needed.
+
+**Via Blueprint (recommended):** in the Render dashboard, choose
+**New -> Blueprint** and point it at this repository. Render reads
+[`render.yaml`](render.yaml) and creates the service automatically.
+
+**Manual equivalent**, if you'd rather configure it by hand instead of
+via Blueprint (values match `render.yaml` exactly):
+
+| Setting | Value |
+|---|---|
+| Runtime | Docker |
+| Dockerfile path | `./Dockerfile` |
+| Plan | Starter (or larger -- needs enough RAM for pyroomacoustics + numpy/scipy) |
+| Region | Your choice -- pick the one closest to your users |
+| Branch | Your default branch |
+| Health check | Default TCP check against `$PORT` (no `healthCheckPath` set -- see "Health checks" above) |
+| Persistent disk | None attached |
+
+**Environment variables:**
+
+| Variable | Value | Notes |
+|---|---|---|
+| `APP_DATA_DIR` | `/var/data` | Per-request scratch storage; see "Storage & persistence" above |
+| `PORT` | *(unset)* | Injected automatically by Render -- do not set it yourself |
+
+No other environment variables, secrets, or API keys are required --
+this app has none.
