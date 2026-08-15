@@ -1,18 +1,12 @@
-# Single-container deployment for the Part 2 demo: runs the FastAPI
-# backend (api/app.py) and the Streamlit frontend (demo/app.py) as two
-# processes inside one container, since Cloud Run (and most simple PaaS
-# targets) expose exactly one port per service. The entrypoint script
-# starts uvicorn in the background on an internal port, then starts
-# Streamlit in the foreground bound to Cloud Run's $PORT.
+# Single-process deployment: one Streamlit app (demo/app.py), one
+# container, one Render Web Service. No separate backend process is
+# started -- demo/app.py calls src/service.py -> src/pipeline.py
+# in-process (see README.md's "Architecture" section for why no
+# long-running worker/queue is needed for this workload).
 #
 # Build:  docker build -t doa-demo .
 # Run:    docker run -p 8080:8080 -e PORT=8080 doa-demo
 # Then visit http://localhost:8080
-#
-# Deploy to Cloud Run (requires `gcloud` + a GCP project -- NOT
-# available in this session's connectors; see reports/part1_results.md
-# / the PR description for the honest deployment-attempt writeup):
-#   gcloud run deploy doa-demo --source . --port 8080 --memory 1Gi
 
 FROM python:3.11-slim
 
@@ -21,20 +15,37 @@ FROM python:3.11-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         libsndfile1 \
-        curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY requirements.txt requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir streamlit>=1.30 plotly>=5.20 requests>=2.31
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 RUN pip install --no-cache-dir -e .
 
-ENV PORT=8080
+RUN chmod +x docker-entrypoint.sh
+
+# Local default data directory for `docker run` without APP_DATA_DIR set;
+# Render sets APP_DATA_DIR=/var/data explicitly (see render.yaml).
+ENV APP_DATA_DIR=/app/app_data
+RUN mkdir -p "$APP_DATA_DIR"
+
+# Run as a non-root user. Render injects $PORT at runtime; we don't
+# hard-code a value here (see docker-entrypoint.sh, which expands it).
+RUN useradd --create-home --uid 1000 appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
+# Documents the conventional local port; Render overrides $PORT itself,
+# and docker-entrypoint.sh falls back to this value if $PORT is unset.
 EXPOSE 8080
 
-RUN chmod +x docker-entrypoint.sh
+# Streamlit does not expose a distinct HTTP health-check JSON endpoint by
+# default; Render's default TCP check against $PORT is used instead (see
+# render.yaml). Streamlit's own `/_stcore/health` path does exist and
+# returns 200 with body "ok", so it's documented as an optional HTTP
+# health-check path if a stricter check is ever wanted.
+
 CMD ["./docker-entrypoint.sh"]

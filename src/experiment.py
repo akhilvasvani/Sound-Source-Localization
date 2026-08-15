@@ -3,8 +3,10 @@
 convert a wav file to a mat file to be used in sound_source_localization."""
 
 import math
+import os
 import pathlib
 import sys
+import uuid
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -155,7 +157,16 @@ class ExperimentalMicData:
         self.dist = 0
         self.true_azimuth, self.true_colatitude = 0, 0
 
-        self.name_to_save_file = "".join(["output/", "test_first_fun", ".mat"])
+        # Configurable output directory (defaults to the original "output/"
+        # relative path for CLI scripts -- src/main.py, validation/run_validation.py --
+        # so their behavior is unchanged). The deployed app (src/pipeline.py)
+        # passes an APP_DATA_DIR-derived path instead, see src/paths.py.
+        # The filename includes a random suffix so concurrent runs (e.g. two
+        # browser tabs hitting the deployed Streamlit app at once) can't
+        # clobber each other's scratch .mat file mid-run.
+        self.output_dir = kwargs.get('output_dir', 'output')
+        self.name_to_save_file = os.path.join(
+            self.output_dir, "test_first_fun_{}.mat".format(uuid.uuid4().hex[:12]))
 
     def _read_wav_file(self):
         """Reads in the source audio file (.wav or .flac) and checks that

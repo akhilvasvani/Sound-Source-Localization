@@ -4,6 +4,11 @@ matplotlib>=3.4
 pyroomacoustics>=0.7,<1.0
 pytest>=7.0
 soundfile>=0.12
+streamlit>=1.30
+plotly>=5.20
+
+# The following are only used by the optional, non-deployed dev/test API
+# wrapper (api/app.py + test/unit/test_api.py) -- not started in production.
 fastapi>=0.110
 uvicorn>=0.29
 python-multipart>=0.0.9

@@ -33,6 +33,7 @@ import time
 import numpy as np
 
 from src.experiment import ExperimentalMicData
+from src.paths import get_generated_dir
 from src.preprocess import PrepareData
 from src.sound_source_localization import SoundSourceLocation
 from src.audio_source import load_multichannel_recording, build_mic_data_dict_from_arrays
@@ -254,16 +255,28 @@ def run_doa_from_source_file(source_wav_path, source_position, algo_name="SRP",
     rt60_cfg = RT60_LEVELS[rt60_level]
     mic_clusters = default_mic_clusters(cluster_centers)
 
-    os.makedirs("output", exist_ok=True)
+    # APP_DATA_DIR-derived directory for the deployed app (see src/paths.py);
+    # falls back to a local ./app_data/generated directory when APP_DATA_DIR
+    # is unset (e.g. plain local development). This scratch .mat file is
+    # read back once (below, via PrepareData) within this same function
+    # call and is not needed afterward -- it is not durable application data.
     (distance, true_azimuth_local, true_colatitude_local), out_file, converted_mics, \
         sample_rate, mic_groups = ExperimentalMicData(
             source_wav_path, number_of_mics=1, room_dim=room_dim,
             source_dim=source_position, mic_location=[0.0, 0.0, 0.0],
             mic_clusters=mic_clusters,
             absorption=rt60_cfg["absorption"], max_order=rt60_cfg["max_order"],
+            output_dir=get_generated_dir(),
         ).run(plot=False)
 
     data = next(PrepareData(out_file, *converted_mics).load_file())
+
+    # Scratch file is fully consumed above; remove it immediately rather
+    # than letting per-request .mat files accumulate under APP_DATA_DIR.
+    try:
+        os.remove(out_file)
+    except OSError:
+        pass
 
     report = _run_doa_and_report(
         data, mic_groups, converted_mics, room_dim, source_position, algo_name,

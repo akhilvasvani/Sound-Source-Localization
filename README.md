@@ -268,16 +268,120 @@ ESC-50 environmental sound) with known simulated ground-truth positions.
 - **Benchmark harness:** `experiments/real_world_benchmark.py` (135 runs
   across 3 datasets x 3 RT60 levels x 5 algorithms x 3 positions); raw
   output in `experiments/results/`.
-- **Interactive demo:** a single-page FastAPI + Streamlit app letting you
-  pick a preset (heart-proxy or real-world) or upload your own
-  multi-channel recording, run the DOA pipeline, and see the estimated
-  vs. true position in 3D. See [`demo/README.md`](demo/README.md) for
-  local run instructions.
-- **Deployment status (honest report):** [`reports/deployment_status.md`](reports/deployment_status.md) --
-  the demo runs correctly locally; it is not deployed to a public URL.
-  No Cloud Run connector was available in the environment this was built
-  in (the user's literal request), and a genuine attempt to deploy the
-  backend to Vercel hit an account-permission error unrelated to the code.
+- **Interactive demo:** a single-page Streamlit app (`demo/app.py`)
+  letting you pick a preset (heart-proxy or real-world) or upload your
+  own multi-channel recording, run the DOA pipeline, and see the
+  estimated vs. true position in 3D. See [`demo/README.md`](demo/README.md)
+  for local run instructions and "Architecture" / "Deploying to Render"
+  below for how it's deployed.
+- **Deployment status (honest report):** [`reports/deployment_status.md`](reports/deployment_status.md).
+
+## Architecture
+
+The demo is a **single Python process**: `demo/app.py` (Streamlit) calls
+`src/service.py`, which calls `src/pipeline.py` directly, in-process --
+no HTTP hop, no second server, no queue. This is deliberate, not a
+simplification that skips a "real" architecture:
+
+- Every DOA run is synchronous and takes well under 30 seconds (0.3-27s
+  measured across the full benchmark matrix, see
+  [`reports/part1_results.md`](reports/part1_results.md)) -- short enough
+  that a request can simply wait for the result inline. There is no
+  background job, no schedule, and no work that must survive a process
+  restart.
+- There's no database and no multi-user shared write state -- each
+  request's uploaded file and generated `.mat` scratch file are staged
+  under `APP_DATA_DIR` (see `src/paths.py`), consumed once, and deleted
+  immediately after, all within that same request.
+- An optional FastAPI wrapper still exists at `api/app.py` purely for
+  local `curl`/scripting convenience and for `test/unit/test_api.py`'s
+  endpoint-contract tests -- it is **not started in the deployed
+  container** and is not required for the demo to work.
+
+This is why the deployed architecture is one Dockerized Render Web
+Service running `streamlit run demo/app.py`, with no separate backend
+service. If a future feature needs a genuinely long-running or
+scheduled job (e.g. batch-processing a large uploaded dataset, or a
+recurring re-benchmark), that would need a separate worker -- nothing
+in the current app requires one.
+
+### Storage & persistence
+
+All runtime-writable paths (uploads, generated `.mat` scratch files)
+derive from a single `APP_DATA_DIR` environment variable (`src/paths.py`):
+
+- **Local development:** unset -> falls back to `./app_data` at the repo
+  root (already gitignored).
+- **Production (Render):** set to `/var/data` via `render.yaml`.
+
+**No persistent disk is attached in `render.yaml`.** Every file under
+`APP_DATA_DIR` is per-request scratch data -- an uploaded recording or a
+generated `.mat` file that's read back once and deleted within the same
+request -- and nothing needs to survive a container restart or be shared
+across instances. If Render's ephemeral local disk is wiped on restart
+or redeploy, nothing is lost. `/var/data` is used as the path anyway
+(rather than e.g. `/tmp`) purely so a persistent disk could be attached
+later at that exact mount point without any code changes, if a future
+feature ever needs durable storage.
+
+There is no database anywhere in this app (no SQLite, no external DB) --
+none of the existing functionality needed one, so none was introduced.
+
+### Health checks
+
+Render's **default TCP health check** against `$PORT` is used (no
+`healthCheckPath` is set in `render.yaml`). Streamlit's root `/` returns
+a full HTML page (not a small JSON payload), and on first load it can
+take a few seconds to render while Python/pyroomacoustics import --
+treating that HTML response as a health signal is more fragile than a
+plain TCP accept-connection check. Streamlit does expose an internal
+`/_stcore/health` path that returns `200 ok` quickly and reliably (this
+was used during local Docker-equivalent testing, see
+[`reports/deployment_status.md`](reports/deployment_status.md)); it's a
+reasonable alternative `healthCheckPath` if you want a stricter check
+than bare TCP, but plain TCP is what `render.yaml` ships with by default.
+
+## Deploying to Render
+
+1. Push this repo (or your fork) to GitHub/GitLab.
+2. In the Render dashboard: **New -> Web Service**, connect the repo,
+   and choose **Docker** as the runtime (Render auto-detects the root
+   `Dockerfile`) -- or use **New -> Blueprint** and point it at
+   [`render.yaml`](render.yaml) to apply everything below automatically.
+3. **Environment variables** (Render dashboard -> Environment):
+   | Variable | Value | Required |
+   |---|---|---|
+   | `APP_DATA_DIR` | `/var/data` | Yes |
+   | `PORT` | *(set automatically by Render -- do not add manually)* | N/A |
+4. **Health check path:** leave unset (default TCP check). Optionally
+   set to `/_stcore/health` if you want an HTTP check instead -- see
+   "Health checks" above.
+5. **Persistent disk:** not required (see "Storage & persistence" above).
+   Leave the disk section empty.
+6. Deploy. Render builds the `Dockerfile` and runs `docker-entrypoint.sh`,
+   which starts `streamlit run demo/app.py --server.address 0.0.0.0
+   --server.port $PORT --server.headless true`.
+
+## Running with Docker locally
+
+```bash
+docker build -t doa-demo .
+docker run -p 8080:8080 -e PORT=8080 -e APP_DATA_DIR=/app/app_data doa-demo
+```
+
+Then open http://localhost:8080. To use a `.env` file instead of `-e`
+flags: copy [`.env.example`](.env.example) to `.env` and run with
+`docker run -p 8080:8080 -e PORT=8080 --env-file .env doa-demo`.
+
+## Vercel
+
+This app has no separate Next.js/static marketing frontend, so nothing
+is deployed to Vercel -- the Streamlit app itself cannot run on Vercel
+(it's a serverless platform; Streamlit needs a persistent process with a
+WebSocket connection back to the browser). If a separate marketing site
+is ever added to this repo, it should stay independently deployable to
+Vercel, pointed at the Render-hosted app via a `PUBLIC_APP_URL` (or
+`NEXT_PUBLIC_APP_URL`) environment variable.
 
 ## References
 

@@ -1,122 +1,116 @@
-# Part 2 deployment status (honest report)
+# Deployment status (honest report)
 
-**Bottom line: the demo runs correctly locally (backend + frontend
-both verified working end-to-end); it is not deployed to any public
-URL.** Here's exactly what was tried and why it didn't reach a public
-URL, so this isn't a vague "it didn't work."
+**Bottom line: the demo is now a single Dockerized Streamlit service,
+verified working end-to-end locally through the exact command Render
+will run in production. It has not been deployed to a live Render URL
+from this session** -- there is no Render connector/CLI available here
+(only GitHub, Vercel, a finance data tool, and a sports-odds tool are
+connected), so the actual `render.yaml` apply step has to be done by
+the repo owner in the Render dashboard. Everything up to that last step
+has been built and tested.
 
-## What works right now (verified, not assumed)
+This supersedes the previous version of this report, which covered a
+different, now-abandoned architecture (FastAPI backend + Streamlit
+frontend as two processes, targeting Cloud Run/Vercel). That direction
+was explicitly replaced: no Google Cloud services of any kind, single
+Dockerized Streamlit service on Render. See `README.md`'s "Architecture"
+section for the reasoning behind the current design.
 
-- `uvicorn api.app:app --host 0.0.0.0 --port 8000` -- FastAPI backend,
-  all 4 endpoints (`/api/health`, `/api/presets`,
-  `/api/upload-mic-geometry`, `POST /api/run/preset`,
-  `POST /api/run/upload`) tested directly via `curl` and via 8 automated
-  tests (`test/unit/test_api.py`, using FastAPI's `TestClient`).
-- `streamlit run demo/app.py` -- frontend, verified via Playwright
-  screenshots in both preset mode and upload mode: correct 3D
-  visualization (mic clusters, DOA rays, pairwise intersection cloud,
-  estimated vs. true position), correct results panel (angle/position
-  error, measured RT60), no layout bugs.
+## What changed and why
 
-Anyone can run this today with the instructions in `demo/README.md`.
+- **One process, not two.** `demo/app.py` (Streamlit) now calls
+  `src/service.py` -> `src/pipeline.py` directly, in-process. The
+  previous architecture ran a FastAPI backend and a Streamlit frontend
+  as two processes in one container, talking over HTTP
+  (`DOA_API_BASE_URL`). That HTTP hop added no value for a
+  single-container deployment with no other consumer of the API, so it
+  was removed. `api/app.py` still exists and still works (same
+  `src/service.py` underneath), but it is optional and not started in
+  the deployed container -- see `demo/README.md`.
+- **No GCP anywhere.** The old `Dockerfile`/`docker-entrypoint.sh`
+  header comments referenced `gcloud run deploy` as a suggested next
+  step; no actual GCP SDK, Terraform, Cloud Build config, or
+  service-account file ever existed in this repo (confirmed by
+  searching the full repository tree). Those comments have been
+  removed/replaced with Render-specific instructions.
+- **`vercel.json` removed.** It routed the old FastAPI backend through
+  Vercel's Python serverless runtime. With no separate backend process
+  in the new architecture, and no separate Next.js/static marketing
+  frontend anywhere in this repo, there is nothing left for Vercel to
+  deploy -- see `README.md`'s "Vercel" section.
+- **Storage now goes through `APP_DATA_DIR`.** Uploaded recordings and
+  generated `.mat` scratch files used to land in the system temp
+  directory (`tempfile.NamedTemporaryFile`) and a hardcoded
+  `output/test_first_fun.mat` path respectively -- neither was
+  configurable. Both now derive from a single `APP_DATA_DIR` environment
+  variable (`src/paths.py`), defaulting to `./app_data` locally and set
+  to `/var/data` in `render.yaml`. See `README.md`'s "Storage &
+  persistence" section for why no persistent disk is attached.
 
-## What the user asked for vs. what's actually available in this environment
+## What was actually tested this session (verified, not assumed)
 
-The request was: "FastAPI backend on Cloud Run (Dockerfile included),
-frontend on Vercel if Next.js, or bundle everything into one Streamlit
-app on Cloud Run if you go that route instead."
+There is still no `docker` binary in this development sandbox (confirmed:
+`which docker` returns nothing), so `docker build`/`docker run` could not
+be executed literally. To validate as much of the real deployment path
+as possible without a Docker daemon, the exact command the container
+will run was executed directly:
 
-This session's connected tools are: GitHub, Vercel, a finance data
-tool, and a sports-odds tool. **There is no Google Cloud / Cloud Run
-connector available.** That is the literal, primary blocker for the
-requested deployment target -- not a code problem, a missing platform
-connection. It's stated here plainly rather than worked around with a
-fake success.
-
-## What was actually attempted with what is available
-
-**1. Docker image (`Dockerfile` + `docker-entrypoint.sh`, committed).**
-Written to Cloud Run's exact convention (single container, binds to
-`$PORT`, both processes -- uvicorn backend + streamlit frontend --
-started by `docker-entrypoint.sh`, `wait -n` so the container exits if
-either process dies). **This image has not been build-tested.** There
-is no `docker` binary in this development sandbox (confirmed:
-`which docker` returns nothing), so `docker build` was never actually
-run. The two processes it starts were each verified working directly
-(not inside a container) as described above, but the container
-packaging itself -- the `Dockerfile` build succeeding, the
-`docker-entrypoint.sh` script's process orchestration working as
-written -- is unverified. This is disclosed in `demo/README.md` too.
-If you have Docker locally: `docker build -t doa-demo . && docker run
--p 8080:8080 -e PORT=8080 doa-demo`, then check http://localhost:8080.
-
-**2. Vercel deployment of the FastAPI backend.** Streamlit cannot run
-on Vercel at all -- it's a serverless platform (functions spin up per
-request and don't hold a persistent process), and Streamlit requires a
-long-lived server with a WebSocket connection back to the browser.
-That part of the architecture mismatch is unavoidable regardless of
-account permissions.
-
-The FastAPI backend alone, in principle, *can* run as a Vercel Python
-serverless function (its actual runtime dependencies -- numpy,
-soundfile, fastapi, pydantic, pyroomacoustics -- have no dependency on
-a persistent connection). A `vercel.json` routing the whole backend
-through `api/app.py` was written and a real deployment was attempted
-using the connected Vercel account (`npx vercel deploy --token
-$VERCEL_TOKEN`).
-
-**Result: it failed, but not because of the code or the `vercel.json`
-config.** Every attempt (with `--prod`, with `--target preview`, from
-a project directory with and without a linked local `.git`, under
-multiple different project names) failed at the same point, with the
-same message:
-
-```
-Error: You don't have permission to create a Production Deployment for this project.
+```bash
+APP_DATA_DIR=/tmp/app_data_test PORT=8091 ./docker-entrypoint.sh
 ```
 
-This happened even for a brand-new, never-before-seen project name, and
-even when explicitly requesting a preview (non-production) target --
-Vercel appears to treat every *first* deployment of a new project as
-implicitly requiring production-deploy permission, which this
-account/token combination doesn't have for new projects specifically.
-This is very likely an account or team-role permission setting (the
-connected Vercel account authenticates fine, and can see and has
-existing production deployments for other projects on the same team --
-`check-your-politician`, `la-money-votes` -- so it is not a broken
-connection or expired token, and not a Vercel-wide outage). Resolving
-it would require either a role/permission change on the Vercel team
-account, or deploying through the Vercel web dashboard directly
-(outside of what this session's tools can do) rather than the CLI
-token used here. All test projects created during this attempt
-(`doa-demo-api`, `doa-demo-api-preview`, `doa-demo-api2`) were deleted
-afterward to avoid leaving clutter in the account.
+This runs the identical `docker-entrypoint.sh` script that `CMD` invokes
+inside the image, with `$PORT` expansion exercised for real (not just
+read as source). Results:
 
-Beyond the permission error, there's also a real unresolved technical
-risk that was never reached: `pyroomacoustics` ships C extensions and
-is a moderately large dependency; Vercel's Python serverless functions
-have a size limit (historically ~250 MB unzipped) that a
-numpy+scipy+pyroomacoustics function could plausibly approach or
-exceed. This was not tested because the permission error blocked any
-deployment attempt from getting far enough to hit it.
+- The script correctly expanded `${PORT:-8080}` to `8091` and bound
+  Streamlit to `0.0.0.0:8091` (confirmed in the process's own startup log).
+- `curl http://localhost:8091/` returned `HTTP 200` with real Streamlit
+  HTML (not an error page).
+- `curl http://localhost:8091/_stcore/health` returned `HTTP 200` with
+  body `ok` -- Streamlit's built-in health path, a viable
+  `healthCheckPath` alternative to Render's default TCP check (see
+  README).
+- `APP_DATA_DIR=/tmp/app_data_test` was created and confirmed writable.
+- A full **Playwright browser click-through** against the running app
+  (not just an HTTP status check) exercised both modes end-to-end:
+  - **Preset mode:** selected the heart-proxy preset, clicked "Run DOA
+    pipeline," confirmed the Results panel, Algorithm/Runtime metrics,
+    and 3-D visualization all rendered with real computed numbers.
+  - **Upload mode:** uploaded a synthetic 4-channel `.wav`, clicked "Run
+    DOA pipeline," confirmed the "No 3-D position fix" messaging
+    rendered correctly (expected for a single mic cluster, per the
+    documented physical limitation).
+  - After both runs, `APP_DATA_DIR`'s `generated/` and `uploads/`
+    subdirectories were confirmed **empty** -- scratch files are
+    created, consumed, and deleted within the same request, as designed.
+- `pytest test/` -- **104/104 passing** after the refactor (unchanged
+  count from before this round; `api/app.py`'s tests still pass against
+  the same endpoints, now backed by the shared `src/service.py`).
+- Missing-secret handling: this app has no optional secrets at all
+  (`DOA_API_BASE_URL`, the only env var the old architecture read, was
+  removed entirely). Bad *inputs* (unknown preset id, unknown algorithm,
+  unsupported upload file extension) were confirmed to raise plain
+  `KeyError`/`ValueError` from `src/service.py`, which `demo/app.py`
+  catches and renders as `st.error(...)` rather than an unhandled
+  stack trace, and which `api/app.py` translates to a 4xx `HTTPException`.
 
-**3. `deploy_website`/`publish_website` (this session's own
-website-publishing tooling).** Checked and ruled out: that pipeline is
-built around a Node/Vite static-build + optional Node backend model
-(`run_command="node dist/index.cjs"` style), not a natural fit for a
-Python/pyroomacoustics backend or a Streamlit frontend. Not used.
+**What was not literally tested:** the actual `docker build` step (no
+Docker daemon available) and an actual live deploy to Render (no Render
+connector/CLI available in this session). The entrypoint script,
+`$PORT` handling, Streamlit process behavior, and full pipeline logic it
+wraps were all verified directly; the remaining risk is narrow --
+mainly whether the `Dockerfile`'s `apt-get`/`pip install` steps succeed
+in a real Docker build environment, which could not be executed here.
 
-## Recommended path if you want an actual public URL
+## Recommended next step
 
-The most direct fix is almost certainly on the Vercel side, not the
-code: check the team/account's deploy permissions for new projects
-(Vercel dashboard -> team settings -> roles/permissions), or create
-the project once via the Vercel web dashboard (which may not hit the
-same restriction the CLI did) and then use the CLI only for subsequent
-deployments to that already-created project. Once a project exists and
-one dashboard-created deployment succeeds, deploying the FastAPI
-backend there directly is a reasonable next step -- watch for the
-pyroomacoustics package-size risk above. Cloud Run itself would need
-that connector added to this environment; short of that, the Docker
-image can be built and pushed manually to any container host (Cloud
-Run, Fly.io, Render, a VM) once its build is verified locally.
+1. Run `docker build -t doa-demo .` and `docker run -p 8080:8080 -e
+   PORT=8080 doa-demo` locally (wherever Docker is available) as a final
+   sanity check before deploying -- the app logic itself is already
+   verified end-to-end via the method above.
+2. Push to GitHub, then either apply `render.yaml` via Render's
+   Blueprint flow, or create the Web Service manually using the exact
+   values in `README.md`'s "Deploying to Render" section.
+3. No further Vercel action needed -- there is no separate frontend for
+   this app.

@@ -1,52 +1,40 @@
 #!/usr/bin/env python
 """Single-page Streamlit demo for the Sound Source Localization pipeline.
 
-Talks to the FastAPI backend (api/app.py) over plain HTTP -- this file
-contains NO direct pyroomacoustics/DOA logic itself, only UI + calls to
-the REST API, per the requested Backend(FastAPI) / Frontend(Streamlit)
-split.
+Calls src/service.py directly, in-process -- there is no separate
+backend server to start, monitor, or keep alive. This is the only
+process that runs in the deployed architecture (single Render Web
+Service, single Docker container, one `streamlit run` command).
 
-Run locally (after `uvicorn api.app:app --port 8000` is already running):
+Run locally:
     streamlit run demo/app.py
-
-The backend base URL is read from the DOA_API_BASE_URL env var, falling
-back to http://localhost:8000 for local development.
 """
-
-import os
 
 import numpy as np
 import plotly.graph_objects as go
-import requests
 import streamlit as st
 
-API_BASE_URL = os.environ.get("DOA_API_BASE_URL", "http://localhost:8000")
+from src.service import list_presets, run_preset, run_upload
 
 st.set_page_config(page_title="Sound Source Localization Demo", layout="wide")
 st.title("Sound Source Localization -- Interactive Demo")
 st.caption(
     "Wraps the pyroomacoustics DOA/triangulation pipeline from "
     "[akhilvasvani/Sound-Source-Localization](https://github.com/akhilvasvani/Sound-Source-Localization) "
-    "as a REST API. Pick a preset (mix of a heart-proxy signal and real-world audio) or upload your own "
+    "as an interactive demo. Pick a preset (mix of a heart-proxy signal and real-world audio) or upload your own "
     "multi-channel recording, then compare the estimated source position/bearing against the true one."
 )
 
 
 @st.cache_data(ttl=30)
 def fetch_presets():
-    resp = requests.get(f"{API_BASE_URL}/api/presets", timeout=10)
-    resp.raise_for_status()
-    return resp.json()
+    return list_presets()
 
 
 try:
     catalog = fetch_presets()
 except Exception as exc:
-    st.error(
-        f"Could not reach the backend API at {API_BASE_URL} ({exc}). "
-        f"Make sure `uvicorn api.app:app --port 8000` is running (see README's "
-        f"'Running the demo locally' section)."
-    )
+    st.error(f"Could not load the preset catalog: {exc}")
     st.stop()
 
 ALGORITHMS = catalog["algorithms"]
@@ -71,24 +59,23 @@ if mode == "Preset example":
 
     if run_clicked:
         with st.spinner(f"Simulating room + running {algorithm} DOA + triangulation..."):
-            resp = requests.post(
-                f"{API_BASE_URL}/api/run/preset",
-                json={"preset_id": preset["id"], "algorithm": algorithm,
-                      "rt60_level": rt60_level, "n_grid": 4000},
-                timeout=120,
-            )
-        if resp.status_code != 200:
-            st.error(f"Backend error: {resp.text}")
-            st.stop()
-        st.session_state["report"] = resp.json()
+            try:
+                report = run_preset(preset["id"], algorithm=algorithm,
+                                     rt60_level=rt60_level, n_grid=4000)
+            except KeyError as exc:
+                st.error(f"Invalid input: {str(exc).strip(chr(39))}")
+                st.stop()
+            except Exception as exc:
+                st.error(f"DOA pipeline failed: {exc}")
+                st.stop()
+        st.session_state["report"] = report
 
 else:
     uploaded = st.sidebar.file_uploader("Multi-channel .wav or .flac file", type=["wav", "flac"])
     st.sidebar.caption(
-        "Assumed mic geometry: a single small (~15 cm) 4-mic tetrahedral cluster "
-        "(see /api/upload-mic-geometry). A single array/cluster gives a BEARING "
-        "(direction), not a full 3-D position fix -- this is a real physical "
-        "limitation, not a bug."
+        "Assumed mic geometry: a single small (~15 cm) 4-mic tetrahedral cluster. "
+        "A single array/cluster gives a BEARING (direction), not a full 3-D position fix -- "
+        "this is a real physical limitation, not a bug."
     )
     algorithm = st.sidebar.selectbox("DOA algorithm", ALGORITHMS, index=0)
     known_true = st.sidebar.checkbox("I know the true source position (meters)")
@@ -98,21 +85,22 @@ else:
         x = cols[0].number_input("x", value=2.0)
         y = cols[1].number_input("y", value=1.5)
         z = cols[2].number_input("z", value=1.0)
-        true_source_m = f"{x},{y},{z}"
+        true_source_m = [x, y, z]
 
     run_clicked = st.sidebar.button("Run DOA pipeline", type="primary", disabled=uploaded is None)
 
     if run_clicked and uploaded is not None:
         with st.spinner(f"Running {algorithm} DOA on your recording..."):
-            files = {"file": (uploaded.name, uploaded.getvalue())}
-            data = {"algorithm": algorithm}
-            if true_source_m:
-                data["true_source_m"] = true_source_m
-            resp = requests.post(f"{API_BASE_URL}/api/run/upload", files=files, data=data, timeout=120)
-        if resp.status_code != 200:
-            st.error(f"Backend error: {resp.text}")
-            st.stop()
-        st.session_state["report"] = resp.json()
+            try:
+                report = run_upload(uploaded.getvalue(), uploaded.name, algorithm=algorithm,
+                                     true_source_m=true_source_m)
+            except (KeyError, ValueError) as exc:
+                st.error(f"Invalid input: {str(exc).strip(chr(39))}")
+                st.stop()
+            except Exception as exc:
+                st.error(f"DOA pipeline failed: {exc}")
+                st.stop()
+        st.session_state["report"] = report
 
 
 # --------------------------------------------------------------------------

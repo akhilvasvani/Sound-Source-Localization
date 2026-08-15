@@ -1,0 +1,43 @@
+# Render Blueprint for the single Dockerized Streamlit service.
+# https://render.com/docs/blueprint-spec
+#
+# Apply via the Render dashboard: New -> Blueprint -> point at this repo.
+# (Everything here can also be set up manually in the dashboard instead --
+# see README.md's "Deploying to Render" section for the exact manual
+# equivalent of every value below.)
+
+services:
+  - type: web
+    name: doa-demo
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter          # smallest paid plan with enough RAM for pyroomacoustics + numpy/scipy; adjust as needed
+    region: oregon          # pick the region closest to your users
+    branch: feature/real-world-benchmark-and-demo   # update to your default branch once merged
+
+    # No httpPath health check is set -- Render's default TCP check
+    # against $PORT is used instead. See README.md's "Health checks"
+    # section for why this is the safer choice for a Streamlit service
+    # (Streamlit's own optional /_stcore/health path is documented there
+    # too, if a stricter HTTP check is ever wanted).
+
+    envVars:
+      - key: APP_DATA_DIR
+        value: /var/data
+      # PORT is injected automatically by Render -- do not set it here.
+
+    # No persistent disk is attached. Everything under APP_DATA_DIR is
+    # per-request scratch data (a temporarily-staged upload, a generated
+    # .mat file consumed within the same request) that is deleted right
+    # after use and never needs to survive a restart or be shared across
+    # instances -- see README.md's "Storage & persistence" section.
+    # If that ever changes (e.g. a feature that must persist data across
+    # restarts), uncomment the block below and re-add a `disk:` reference
+    # from this service. The literal /var/data path above is chosen
+    # specifically so this can be enabled later without touching app
+    # code.
+    #
+    # disk:
+    #   name: doa-demo-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
