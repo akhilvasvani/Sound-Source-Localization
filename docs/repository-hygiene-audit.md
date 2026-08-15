@@ -126,11 +126,10 @@ removed.
   out of scope for a "remove dead code" pass (no dead code path here,
   only unused bindings).
 
-## Files proposed for deletion (NOT deleted -- awaiting approval)
+## Files deleted (approved and removed)
 
-Per the operating rules, nothing below has been deleted. This is the
-complete list, with evidence, for explicit sign-off before removal or any
-new PR.
+Both candidates below were presented to the repository owner with full
+evidence, explicitly approved, and then deleted.
 
 ### 1. `results/` (entire directory -- 601 tracked files, ~11 MB)
 
@@ -155,11 +154,9 @@ new PR.
 - **Validation performed:** confirmed via `git ls-files results/ | wc -l`
   (601) and `du -sh results/` (11 MB); confirmed zero references via
   repo-wide `grep`; confirmed exclusion from the Docker build context via
-  `.dockerignore`. `pytest test/` passes with the directory present, and
-  nothing in the test suite touches it, so there's no way to
-  "validate removal breaks nothing" further than the reference search
-  already performed -- flagging for your explicit sign-off given the
-  size of the change.
+  `.dockerignore`. Presented to the repository owner with this evidence,
+  approved, then deleted with `git rm -r results/`. `pytest test/`
+  still passes 111/111 after removal.
 
 ### 2. `test/unit/test_no_transform.csv` and `test/unit/test_transform.csv` (2 files, ~1.1 MB combined)
 
@@ -179,10 +176,11 @@ new PR.
     restructured the original thesis code into modules -- they appear to
     be output artifacts from a manual run at that time, not fixtures a
     test was ever written against.
-- **Validation performed:** `pytest test/` passes identically with these
-  files present (111 passed); confirmed via repo-wide `grep` that no
+- **Validation performed:** confirmed via repo-wide `grep` that no
   current test references them by filename or via dynamic directory
-  scanning.
+  scanning. Presented to the repository owner with this evidence,
+  approved, then deleted with `git rm`. `pytest test/` still passes
+  111/111 after removal.
 
 No other files met the evidence bar for a deletion proposal in this pass.
 
@@ -215,5 +213,6 @@ after every change made in it. No pre-existing failures were observed.
 | Playwright smoke test against `streamlit run demo/app.py` | Confirmed updated intro copy renders, the removed "far wall" line and old footer prose are gone, and the "How this works · Source" footer links remain -- see Part 1 validation notes |
 | `python -m src.main` | Runs; prints a real measured triangulated position and error (e.g. `error_m=0.0101`) |
 | `vulture src/ tools/ demo/ api/ experiments/ validation/ --min-confidence 60` | Findings reviewed individually above; one genuine dead parameter removed, remainder are false positives or non-dead unused-variable style noise |
-| Repo-wide `grep` reference search for `results/`, `test_no_transform.csv`, `test_transform.csv` | Zero references found for any of the three proposed-deletion targets |
+| Repo-wide `grep` reference search for `results/`, `test_no_transform.csv`, `test_transform.csv` | Zero references found for any of the deletion targets |
+| `pytest test/ -q` after `git rm -r results/` and `git rm test/unit/test_no_transform.csv test/unit/test_transform.csv` | 111 passed -- both approved deletions confirmed safe post-removal |
 | Broken-link scan across all `.md` files (file + anchor targets) | No broken links found after the README/`deployment_status.md` fixes |
