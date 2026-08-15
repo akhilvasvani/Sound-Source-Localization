@@ -3,8 +3,10 @@
 convert a wav file to a mat file to be used in sound_source_localization."""
 
 import math
+import os
 import pathlib
 import sys
+import uuid
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -16,6 +18,7 @@ import pyroomacoustics as pra
 from tools.validations import validate_room_source_dim_and_mic_loc, \
     validate_file_path
 from tools.utilities import CustomMicrophoneSetUp
+from src.audio_source import load_source_signal
 
 
 class ExperimentalMicData:
@@ -154,20 +157,41 @@ class ExperimentalMicData:
         self.dist = 0
         self.true_azimuth, self.true_colatitude = 0, 0
 
-        self.name_to_save_file = "".join(["output/", "test_first_fun", ".mat"])
+        # Configurable output directory (defaults to the original "output/"
+        # relative path for CLI scripts -- src/main.py, validation/run_validation.py --
+        # so their behavior is unchanged). The deployed app (src/pipeline.py)
+        # passes an APP_DATA_DIR-derived path instead, see src/paths.py.
+        # The filename includes a random suffix so concurrent runs (e.g. two
+        # browser tabs hitting the deployed Streamlit app at once) can't
+        # clobber each other's scratch .mat file mid-run.
+        self.output_dir = kwargs.get('output_dir', 'output')
+        self.name_to_save_file = os.path.join(
+            self.output_dir, "test_first_fun_{}.mat".format(uuid.uuid4().hex[:12]))
 
     def _read_wav_file(self):
-        """Reads in the .wav file and check if the file does in fact exist.
+        """Reads in the source audio file (.wav or .flac) and checks that
+           it does in fact exist. Multi-channel source files are mixed
+           down to mono, since this is the single "dry" signal emitted
+           by one simulated point source (see `src.audio_source` for the
+           generic loader, and `src.audio_source.load_multichannel_recording`
+           for the separate case of an already multi-channel *recording*
+           that should bypass room simulation entirely).
+
+           Note: this used to call `scipy.io.wavfile.read` directly,
+           which only supports .wav and silently mishandles some wav
+           sub-formats soundfile handles correctly (e.g. float32 wav).
+           It now delegates to `src.audio_source.load_source_signal`,
+           which also accepts .flac.
 
            Returns:
                fs: (integer) sampling frequency
-               signal: (numpy array) signal data
+               signal: (numpy array) mono signal data
 
             Raises:
-                FileNotFoundError: if .mat file cannot be found
+                FileNotFoundError: if the file cannot be found
         """
         try:
-            rate, signal = wavfile.read(self.filename)
+            rate, signal = load_source_signal(self.filename, mono=True)
             return rate, signal
         except OSError:
             # Check if the python version is 3.6 or greater

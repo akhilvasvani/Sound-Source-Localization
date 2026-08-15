@@ -3,7 +3,8 @@
 Sound Source Localization in a Reverberant Environment was originally a
 project for a master's degree at Johns Hopkins, aimed at locating S1/S2
 heart sounds recorded by a microphone array (e.g. for automated heart-murmur
-detection). This repository estimates a sound source's 3-D position by:
+detection). I decided to expand this repository to estimate any sound
+source's 3-D position by:
 
 1. Computing a direction-of-arrival (DOA) bearing (azimuth + colatitude)
    from each of several small microphone clusters, using pyroomacoustics's
@@ -13,15 +14,6 @@ detection). This repository estimates a sound source's 3-D position by:
    cluster's centroid.
 3. Triangulating all the resulting rays into a single 3-D position
    estimate (least-squares, Huber-robust, or RANSAC).
-
-**Status of this fork:** this is a from-scratch repair of a repository that,
-as originally written, could not run at all (broken imports, no packaging)
-and, even after being made to run, never actually computed a source-location
-estimate -- see "History of this fix" below for exactly what was broken and
-what was rebuilt. It now runs end-to-end, has a real triangulation
-algorithm, and is validated with both math-only and full-audio-simulation
-tests (see "Accuracy" below for honest, measured numbers -- including where
-it still falls short of a sub-cm target).
 
 ## Setup
 
@@ -62,9 +54,17 @@ python -m validation.run_validation
 
 ## Algorithm
 
+Estimating a sound source's 3-D position works like this: get a direction
+estimate from each microphone cluster, turn each direction into a 3-D ray,
+and triangulate the rays into a position -- using pyroomacoustics for both
+the underlying room/acoustic simulation and the DOA search itself.
+
 ### 1. Direction-of-arrival (DOA) per microphone cluster
 
-Given a small set of nearby microphones (a "cluster"), pyroomacoustics's DOA
+A microphone array estimates direction from time differences of arrival:
+the same sound reaches each microphone at a very slightly different time,
+and that pattern of delays encodes the direction it came from. Given a
+small set of nearby microphones (a "cluster"), pyroomacoustics's DOA
 algorithms search over a grid of candidate directions and pick the one whose
 predicted inter-microphone delays best match the recorded signals'
 cross-correlation (SRP-PHAT) or spatial-covariance structure (MUSIC and
@@ -72,14 +72,21 @@ others). We use `src/sound_source_localization.py`'s
 `get_difference_of_arrivals()` for this, wrapping
 `pyroomacoustics.doa.algorithms`.
 
+One coherent DOA cluster on its own only produces a bearing (an
+azimuth/colatitude direction, i.e. a ray) -- not a unique 3-D position.
+Turning a bearing into a position fix requires combining it with other,
+independent bearings (step 2).
+
 ### 2. Ray triangulation (`src/triangulation.py`)
 
 Each cluster's (centroid, direction) pair defines a 3-D ray. With multiple
 rays from spatially separated clusters, the source is (in principle) at
 their common intersection point -- but real DOA estimates are noisy, so the
-rays generally do not intersect exactly. `src/triangulation.py` finds the
-point minimizing (a robust function of) the sum of squared perpendicular
-distances to every ray:
+rays generally do not intersect exactly, and geometry matters: rays from
+clusters that are too close together or too co-planar constrain the
+estimate weakly even when there are several of them. `src/triangulation.py`
+finds the point minimizing (a robust function of) the sum of squared
+perpendicular distances to every ray:
 
 - `triangulate_rays()` -- ordinary linear least squares (closed-form).
 - `huber_weighted_triangulate()` -- iteratively re-weighted least squares
@@ -91,7 +98,18 @@ distances to every ray:
 This is real geometry, not a placeholder: given exact bearings, it recovers
 the true source position to floating-point precision (see "Accuracy").
 
-### 3. Why microphone clusters must be small AND non-planar
+### 3. Reverberation makes this harder, not solved
+
+pyroomacoustics is used both to simulate the room/reverberation (for
+benchmarking, `src/experiment.py`, `experiments/real_world_benchmark.py`)
+and to run the DOA search itself (step 1). Higher reverberation --
+more and stronger reflections -- meaningfully degrades both the bearing
+and the final triangulated position: reflections corrupt the direct-path
+timing information DOA algorithms depend on. This is a genuine
+physical/algorithmic limitation (see "Accuracy" below for measured
+numbers), not something this project claims to have solved.
+
+### 4. Why microphone clusters must be small AND non-planar
 
 Two real acoustic/geometric constraints drove this fork's array design
 (both verified empirically while building this fix, not just asserted):
@@ -174,130 +192,136 @@ scope for this fix.
   use case) and must be overridden for other signal types, as `src/main.py`
   does for its broadband synthetic-noise demo.
 
-## History of this fix (what was broken, what changed)
+## Real-world data benchmark & interactive demo
 
-The repository as received:
+A follow-up round tested whether the reverberation-driven accuracy
+degradation described above is specific to the (synthetic, narrowband)
+signal used in the original validation, by running the same DOA
+algorithms against real-world, non-medical audio (LibriSpeech speech,
+ESC-50 environmental sound) with known simulated ground-truth positions.
 
-- Could not run: `scripts/` were imported as `tools.*`/`src.*` without
-  matching package structure or `__init__.py` files, no `requirements.txt`,
-  no `setup.py`.
-- `sound_speed` was hardcoded to `30` (m/s) -- not the speed of sound in any
-  real medium -- silently corrupting every DOA angle estimate.
-- `CustomMicrophoneSetUp` dropped the z-coordinate and never bounds-checked
-  generated microphone positions against the room, so mics could end up
-  outside the simulated room without any error.
-- The reported "source-location estimate" was actually ~500 raw candidate
-  points per ray sampled along a fixed 0–0.5 m radius sweep; a
-  `use_kd_tree()` method built a KD-tree from these points and then
-  immediately returned `None` -- there was no actual triangulation or
-  clustering step, so no single position estimate was ever produced.
-- `determine_angle_and_distance()` used `np.arctan`, which only returns
-  values in (−90°, 90°) and therefore cannot represent any true colatitude
-  above 90° (any source below the microphone-array plane) -- and divided
-  the centroid sum by `len(room_dim)` (always 3) instead of the actual
-  number of microphones.
-- `ExperimentalMicData`'s reverberation parameters (`absorption`, `max_order`)
-  were never actually passed to `pra.ShoeBox`, so the "reverberant
-  environment" in the project's own name was never deliberately simulated.
+- **Full results and honest verdict:** [`reports/part1_results.md`](reports/part1_results.md).
+  Short version: no -- the reverberation-driven degradation happens just
+  as badly with real-world audio, across every dataset tested. One
+  narrower, algorithm-specific finding (the TOPS algorithm specifically
+  struggling with the narrowband signal, independent of reverberation)
+  did support part of the original hypothesis; see the report for detail.
+- **Benchmark harness:** `experiments/real_world_benchmark.py` (135 runs
+  across 3 datasets x 3 RT60 levels x 5 algorithms x 3 positions); raw
+  output in `experiments/results/`.
+- **Interactive demo:** a single-page Streamlit app (`demo/app.py`)
+  letting you pick a preset (LibriSpeech speech or ESC-50 environmental
+  sound) or upload your own multi-channel recording, run the DOA
+  pipeline, and see the estimated vs. true position in 3D. See
+  [`demo/README.md`](demo/README.md) for local run instructions and
+  "Architecture" below for how it's deployed.
+- **Deployment status (honest report):** [`reports/deployment_status.md`](reports/deployment_status.md).
 
-What this fix adds/changes (see `src/triangulation.py`,
-`src/sound_source_localization.py`, `src/determine_source.py`,
-`src/experiment.py`, `src/main.py`, `tools/utilities.py`, `setup.py`,
-`requirements.txt`, and the `test/`/`validation/` additions for the full
-detail, referenced inline in code comments):
+## Architecture
 
-- Fixed packaging/imports so the project installs and runs.
-- Fixed the `sound_speed`, z-coordinate/bounds, `arctan`→`arctan2`, and
-  centroid-divisor bugs above.
-- Added a real least-squares/Huber/RANSAC ray-triangulation module
-  (`src/triangulation.py`), replacing the dead radius-sampling/KD-tree code.
-- Rebuilt `SoundSourceLocation`/`DetermineSourceLocation` around producing
-  one actual position estimate (plus fit diagnostics: per-ray residuals,
-  inlier weights) instead of an unreduced point cloud.
-- Discovered (empirically, not assumed) and designed around the coplanar
-  elevation ambiguity and cross-cluster spatial-aliasing issues described
-  above, adding non-planar `positions`-based microphone cluster support
-  and per-cluster-only DOA computation (`mic_groups`).
-- Wired up `absorption`/`max_order` so the simulated room actually produces
-  the reverberation the project is named for.
-- Rewrote/added unit tests to match the corrected APIs (77 tests passing)
-  and added a synthetic end-to-end validation script
-  (`validation/run_validation.py`) reporting the honest accuracy numbers
-  above.
+The demo is a **single Python process**: `demo/app.py` (Streamlit) calls
+`src/service.py`, which calls `src/pipeline.py` directly, in-process --
+no HTTP hop, no second server, no queue. This is deliberate, not a
+simplification that skips a "real" architecture:
 
-## Time to Run
+- Every DOA run is synchronous and takes well under 30 seconds (0.3-27s
+  measured across the full benchmark matrix, see
+  [`reports/part1_results.md`](reports/part1_results.md)) -- short enough
+  that a request can simply wait for the result inline. There is no
+  background job, no schedule, and no work that must survive a process
+  restart.
+- There's no database and no multi-user shared write state -- each
+  request's uploaded file and generated `.mat` scratch file are staged
+  under `APP_DATA_DIR` (see `src/paths.py`), consumed once, and deleted
+  immediately after, all within that same request.
+- An optional FastAPI wrapper still exists at `api/app.py` purely for
+  local `curl`/scripting convenience and for `test/unit/test_api.py`'s
+  endpoint-contract tests -- it is **not started in the deployed
+  container** and is not required for the demo to work.
 
-SRP ~ 1 minute per estimate
+This is why the deployed architecture is one Dockerized Render Web
+Service running `streamlit run demo/app.py`, with no separate backend
+service. If a future feature needs a genuinely long-running or
+scheduled job (e.g. batch-processing a large uploaded dataset, or a
+recurring re-benchmark), that would need a separate worker -- nothing
+in the current app requires one.
 
-TOPS ~ 3 minutes per estimate
+### Storage & persistence
 
-MUSIC ~ 5 minutes per estimate
+All runtime-writable paths (uploads, generated `.mat` scratch files)
+derive from a single `APP_DATA_DIR` environment variable (`src/paths.py`):
 
-(Original project's own note -- these `pyroomacoustics` DOA algorithms
-differ substantially in per-call cost; SRP is used by default here.)
+- **Local development:** unset -> falls back to `./app_data` at the repo
+  root (already gitignored).
+- **Production (Render):** set to `/var/data` via `render.yaml`.
 
-## Results (original heart-sound study)
+**No persistent disk is attached in `render.yaml`.** Every file under
+`APP_DATA_DIR` is per-request scratch data -- an uploaded recording or a
+generated `.mat` file that's read back once and deleted within the same
+request -- and nothing needs to survive a container restart or be shared
+across instances. If Render's ephemeral local disk is wiped on restart
+or redeploy, nothing is lost. `/var/data` is used as the path anyway
+(rather than e.g. `/tmp`) purely so a persistent disk could be attached
+later at that exact mount point without any code changes, if a future
+feature ever needs durable storage.
 
-The `results/` folder contains this project's original heart-sound (S1/S2)
-localization trial outputs (both recovered/JADE-preprocessed and raw
-microphone signals, 2- and 3-microphone combinations), predating this fix,
-kept for reference. Per the original author: using the non-recovered
-signals proved easier to localize S1/S2 than using JADE-recovered signals;
-true accuracy was assessed against approximate reference locations from an
-echocardiogram textbook and "Imaging of heart acoustic based on the
-sub-space methods using a microphone array," since no patient echocardiogram
-ground truth was available.
+There is no database anywhere in this app (no SQLite, no external DB) --
+none of the existing functionality needed one, so none was introduced.
 
-## References
+### Health checks
 
-### Heart references
+Render's **default TCP health check** against `$PORT` is used (no
+`healthCheckPath` is set in `render.yaml`). Streamlit's root `/` returns
+a full HTML page (not a small JSON payload), and on first load it can
+take a few seconds to render while Python/pyroomacoustics import --
+treating that HTML response as a health signal is more fragile than a
+plain TCP accept-connection check. Streamlit does expose an internal
+`/_stcore/health` path that returns `200 ok` quickly and reliably (this
+was used during local Docker-equivalent testing, see
+[`reports/deployment_status.md`](reports/deployment_status.md)); it's a
+reasonable alternative `healthCheckPath` if you want a stricter check
+than bare TCP, but plain TCP is what `render.yaml` ships with by default.
 
-[Diagram of Heart](https://en.wikipedia.org/wiki/Pulmonary_valve#/media/File:Diagram_of_the_human_heart_(cropped).svg)
+## Running with Docker locally
 
-[Heart Sounds Review 101](https://www.healio.com/cardiology/learn-the-heart/cardiology-review/topic-reviews/heart-sounds)
+```bash
+docker build -t doa-demo .
+docker run -p 8080:8080 -e PORT=8080 -e APP_DATA_DIR=/app/app_data doa-demo
+```
 
-[Heart Valve Wikipedia](https://en.wikipedia.org/wiki/Heart_valve)
+Then open http://localhost:8080. To use a `.env` file instead of `-e`
+flags: copy [`.env.example`](.env.example) to `.env` and run with
+`docker run -p 8080:8080 -e PORT=8080 --env-file .env doa-demo`.
 
-[Very Strong human heart diagram with body](http://www.stethographics.com/heart/main/sites.htm)
+## Deploying to Render
 
-[Mitral Valve Prolapse](https://www.webmd.com/heart/mitral-valve-prolapse-symptoms-causes-and-treatment#1)
+The app deploys as a single Dockerized Render Web Service running
+`streamlit run demo/app.py` -- see "Architecture" above for why no
+separate backend service is needed.
 
-### JADE algorithm reference
+**Via Blueprint (recommended):** in the Render dashboard, choose
+**New -> Blueprint** and point it at this repository. Render reads
+[`render.yaml`](render.yaml) and creates the service automatically.
 
-[JADE in Python](https://github.com/bregmanstudio/cseparate/blob/master/cjade.py)
+**Manual equivalent**, if you'd rather configure it by hand instead of
+via Blueprint (values match `render.yaml` exactly):
 
-[Python F-strings](https://realpython.com/python-f-strings/)
+| Setting | Value |
+|---|---|
+| Runtime | Docker |
+| Dockerfile path | `./Dockerfile` |
+| Plan | Starter (or larger -- needs enough RAM for pyroomacoustics + numpy/scipy) |
+| Region | Your choice -- pick the one closest to your users |
+| Branch | Your default branch |
+| Health check | Default TCP check against `$PORT` (no `healthCheckPath` set -- see "Health checks" above) |
+| Persistent disk | None attached |
 
-### DOA / pyroomacoustics
+**Environment variables:**
 
-[Pyroomacoustics](https://github.com/LCAV/pyroomacoustics)
+| Variable | Value | Notes |
+|---|---|---|
+| `APP_DATA_DIR` | `/var/data` | Per-request scratch storage; see "Storage & persistence" above |
+| `PORT` | *(unset)* | Injected automatically by Render -- do not set it yourself |
 
-### KD-tree references (from the original radius-sampling approach)
-
-[Fastest way to find the closest point to a given point in 3D, in Python](https://stackoverflow.com/questions/2641206/fastest-way-to-find-the-closest-point-to-a-given-point-in-3d-in-python?rq=1)
-
-[scipy.spatial.KDTree](https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.spatial.KDTree.html#scipy.spatial.KDTree)
-
-## Credits
-
-Thank you [Pyroomacoustics](https://github.com/LCAV/pyroomacoustics) for the
-open-source library containing the different DOA methods.
-
-[Christos Sapsanis](https://engineering.jhu.edu/ece/2019/05/03/the-stethovest-aims-to-bring-the-stethoscope-up-to-date-with-modern-medical-imaging-techniques/?fbclid=IwAR25OcGjx24N1lLi9fQaTHODp0uNWiCMcliCYSmgdXiFQs7Ea_h_w50cW2o#.XriE4RNKhZJ)
-
-Professor Andreas G. Andreou
-
-## Future
-
-Building a deep neural network to classify heart sounds to detect potential
-heart murmurs.
-
-[Cardiologist-level arrhythmia detection and classification in ambulatory electrocardiograms using a deep neural network](https://stanfordmlgroup.github.io/projects/ecg2/)
-
-[More Data](https://irhythm.github.io/cardiol_test_set/)
-
-[Even More Heart Data](https://physionet.org/physiobank/database/#ecg)
-
-[Single-speaker-localization with CNNs](https://github.com/Soumitro-Chakrabarty/Single-speaker-localization)
-
-Paper: [Towards End-to-End Acoustic Localization using Deep Learning: from Audio Signal to Source Position Coordinates](https://arxiv.org/pdf/1807.11094.pdf)
+No other environment variables, secrets, or API keys are required --
+this app has none.

@@ -1,0 +1,14 @@
+[
+  {
+    "file": "rain.wav",
+    "sr": 44100,
+    "duration_s": 5.0,
+    "category": "rain"
+  },
+  {
+    "file": "clock_tick.wav",
+    "sr": 44100,
+    "duration_s": 5.0,
+    "category": "clock_tick"
+  }
+]

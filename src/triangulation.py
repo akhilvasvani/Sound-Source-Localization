@@ -246,6 +246,60 @@ def ransac_triangulate(origins, directions, min_samples=3, residual_threshold=0.
     return refined, best_inliers
 
 
+def pairwise_ray_intersections(origins, directions):
+    """Returns, for every pair of rays, the midpoint of their mutual
+       closest-approach points -- i.e. a classic "pairwise intersection
+       point" for two (generally skew, non-intersecting) 3-D lines.
+
+       This is NOT used by the primary estimator (`triangulate_rays` /
+       `huber_weighted_triangulate` / `ransac_triangulate` solve the
+       proper global least-squares/robust problem over ALL rays at
+       once, which is strictly better-conditioned). It exists purely to
+       produce an intuitive point CLOUD for visualization -- e.g. the
+       demo's 3-D view plots this cloud ("clustering of intersection
+       points from the DOA rays") next to the single robust estimate,
+       so a viewer can see how tightly the individual pairwise
+       intersections agree (a visual proxy for estimate confidence).
+
+       Args:
+           origins: (n, 3) array-like of ray origins.
+           directions: (n, 3) array-like of ray directions (need not be
+               pre-normalized).
+
+       Returns:
+           (n_pairs, 3) numpy array of pairwise closest-approach
+           midpoints, one row per unordered pair of input rays
+           (n_pairs = n * (n - 1) / 2). Nearly-parallel pairs (which
+           have no well-defined closest point) are skipped.
+    """
+    origins = np.asarray(origins, dtype=float)
+    directions = np.asarray(directions, dtype=float)
+    n_rays = origins.shape[0]
+    unit_dirs = np.array([unit(d) for d in directions])
+
+    points = []
+    for i in range(n_rays):
+        for j in range(i + 1, n_rays):
+            o1, d1 = origins[i], unit_dirs[i]
+            o2, d2 = origins[j], unit_dirs[j]
+            b = np.dot(d1, d2)
+            denom = 1.0 - b ** 2
+            if abs(denom) < 1e-9:
+                continue  # (near-)parallel rays: no unique closest point
+            r = o1 - o2
+            c = np.dot(d1, r)
+            f = np.dot(d2, r)
+            # Standard two-line closest-point formula (d1, d2 unit vectors):
+            # t1 = (b*f - c) / denom, t2 = (f - b*c) / denom
+            t1 = (b * f - c) / denom
+            t2 = (f - b * c) / denom
+            p1 = o1 + t1 * d1
+            p2 = o2 + t2 * d2
+            points.append((p1 + p2) / 2.0)
+
+    return np.array(points) if points else np.empty((0, 3))
+
+
 def huber_weighted_triangulate(origins, directions, delta=0.03, max_iter=25, tol=1e-9):
     """Iteratively-reweighted least squares (IRLS) triangulation with a
        Huber loss on each ray's perpendicular residual.

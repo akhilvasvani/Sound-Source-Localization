@@ -107,3 +107,14 @@ venv.bak/
 output/
 mic_*_sound_source_localization_*.csv
 mic_*_sound_source_localization_*.png
+experiments/benchmark_log.txt
+
+# Local APP_DATA_DIR (see .env.example / src/paths.py) -- staged uploads
+# and generated .mat scratch files for local development. Production
+# uses /var/data (Render), not tracked here either way.
+app_data/
+
+# Root-level log files from ad hoc local runs (uvicorn/streamlit stdout
+# redirected to a file, etc.) -- never committed.
+api_server.log
+streamlit.log
