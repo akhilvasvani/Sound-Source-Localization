@@ -143,9 +143,9 @@ def _angle_from_reference(point, reference):
     return float(azimuth), float(colatitude)
 
 
-def _run_doa_and_report(sound_data, mic_groups, mic_locations_room_centered,
-                         room_dim, true_source_position, algo_name, freq_range,
-                         n_grid, triangulation_method, sampling_rate=16000):
+def _run_doa_and_report(sound_data, mic_groups, room_dim, true_source_position,
+                         algo_name, freq_range, n_grid, triangulation_method,
+                         sampling_rate=16000):
     center_of_room = np.array(room_dim, dtype=float) / 2
 
     estimator = SoundSourceLocation(
@@ -279,7 +279,7 @@ def run_doa_from_source_file(source_wav_path, source_position, algo_name="SRP",
         pass
 
     report = _run_doa_and_report(
-        data, mic_groups, converted_mics, room_dim, source_position, algo_name,
+        data, mic_groups, room_dim, source_position, algo_name,
         freq_range, n_grid, triangulation_method, sampling_rate=sample_rate)
 
     report["rt60_level"] = rt60_level
@@ -301,5 +301,5 @@ def run_doa_from_multichannel_upload(upload_wav_path, mic_locations, room_dim,
         mic_groups = [tuple(f"mic{i + 1}" for i in range(n))]
 
     return _run_doa_and_report(
-        data, mic_groups, mic_locations, room_dim, true_source_position, algo_name,
+        data, mic_groups, room_dim, true_source_position, algo_name,
         freq_range, n_grid, triangulation_method, sampling_rate=sample_rate)
